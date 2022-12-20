@@ -32,7 +32,7 @@ class AttachmentUploadJob(val attachmentID: Long, val threadID: String, val mess
     }
 
     // Settings
-    override val maxFailureCount: Int = 20
+    override val maxFailureCount: Int = 5
 
     companion object {
         val TAG = AttachmentUploadJob::class.simpleName
