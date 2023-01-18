@@ -31,13 +31,31 @@ import org.thoughtcrime.securesms.util.CallNotificationBuilder.Companion.TYPE_IN
 import org.thoughtcrime.securesms.util.CallNotificationBuilder.Companion.TYPE_INCOMING_PRE_OFFER
 import org.thoughtcrime.securesms.util.CallNotificationBuilder.Companion.TYPE_INCOMING_RINGING
 import org.thoughtcrime.securesms.util.CallNotificationBuilder.Companion.TYPE_OUTGOING_RINGING
-import org.thoughtcrime.securesms.webrtc.*
+import org.thoughtcrime.securesms.webrtc.AudioManagerCommand
+import org.thoughtcrime.securesms.webrtc.CallManager
+import org.thoughtcrime.securesms.webrtc.CallViewModel
+import org.thoughtcrime.securesms.webrtc.HangUpRtcOnPstnCallAnsweredListener
+import org.thoughtcrime.securesms.webrtc.HangUpRtcTelephonyCallback
+import org.thoughtcrime.securesms.webrtc.IncomingPstnCallReceiver
+import org.thoughtcrime.securesms.webrtc.NetworkChangeReceiver
+import org.thoughtcrime.securesms.webrtc.PeerConnectionException
+import org.thoughtcrime.securesms.webrtc.PowerButtonReceiver
+import org.thoughtcrime.securesms.webrtc.ProximityLockRelease
+import org.thoughtcrime.securesms.webrtc.UncaughtExceptionHandlerManager
+import org.thoughtcrime.securesms.webrtc.WiredHeadsetStateReceiver
 import org.thoughtcrime.securesms.webrtc.audio.OutgoingRinger
 import org.thoughtcrime.securesms.webrtc.data.Event
 import org.thoughtcrime.securesms.webrtc.locks.LockManager
-import org.webrtc.*
-import org.webrtc.PeerConnection.IceConnectionState.*
-import java.util.*
+import org.webrtc.DataChannel
+import org.webrtc.IceCandidate
+import org.webrtc.MediaStream
+import org.webrtc.PeerConnection
+import org.webrtc.PeerConnection.IceConnectionState.CONNECTED
+import org.webrtc.PeerConnection.IceConnectionState.DISCONNECTED
+import org.webrtc.PeerConnection.IceConnectionState.FAILED
+import org.webrtc.RtpReceiver
+import org.webrtc.SessionDescription
+import java.util.UUID
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
@@ -90,7 +108,7 @@ class WebRtcCallService : Service(), CallManager.WebRtcListener {
         const val EXTRA_WANTS_TO_ANSWER = "wants_to_answer"
 
         const val INVALID_NOTIFICATION_ID = -1
-        private const val TIMEOUT_SECONDS = 30L
+        const val TIMEOUT_SECONDS = 30L
         private const val RECONNECT_SECONDS = 5L
         private const val MAX_RECONNECTS = 5
 
@@ -419,10 +437,16 @@ class WebRtcCallService : Service(), CallManager.WebRtcListener {
 
         if (callManager.isPreOffer() && (preOffer == null || preOffer.callId != callId || preOffer.recipient != recipient)) {
             Log.d(TAG, "Incoming ring from non-matching pre-offer")
+            terminate()
             return
         }
 
-        val offer = intent.getStringExtra(EXTRA_REMOTE_DESCRIPTION) ?: return
+        val offer = intent.getStringExtra(EXTRA_REMOTE_DESCRIPTION) ?: run {
+            Log.d(TAG, "No offer remote description in intent")
+            terminate()
+            return
+        }
+
         val timestamp = intent.getLongExtra(EXTRA_TIMESTAMP, -1)
 
         callManager.onIncomingRing(offer, callId, recipient, timestamp) {

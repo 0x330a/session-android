@@ -127,15 +127,15 @@ class CallMessageProcessor(private val context: Context, private val textSecureP
         val recipientAddress = callMessage.sender ?: return
         val callId = callMessage.callId ?: return
         val sdp = callMessage.sdps.firstOrNull() ?: return
+        val callTime = callMessage.sentTimestamp ?: return
         val incomingIntent = WebRtcCallService.incomingCall(
                 context = context,
                 address = Address.fromSerialized(recipientAddress),
                 sdp = sdp,
                 callId = callId,
-                callTime = callMessage.sentTimestamp!!
+                callTime = callTime
         )
         ContextCompat.startForegroundService(context, incomingIntent)
-
     }
 
     private fun CallMessage.iceCandidates(): List<IceCandidate> {
