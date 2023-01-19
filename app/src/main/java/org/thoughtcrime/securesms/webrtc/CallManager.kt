@@ -637,8 +637,7 @@ class CallManager(context: Context, audioManager: AudioManagerCompat, private va
 
     fun handleResponseMessage(recipient: Recipient, callId: UUID, answer: SessionDescription) {
         if (recipient != this.recipient || callId != this.callId) {
-            Log.w(TAG,"Got answer for recipient and call ID we're not currently dialing")
-            return
+            throw Exception("Got answer for recipient and call ID we're not currently dialing")
         }
 
         stateProcessor.processEvent(Event.ReceiveAnswer) {

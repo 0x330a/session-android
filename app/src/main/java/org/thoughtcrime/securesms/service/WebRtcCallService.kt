@@ -38,7 +38,6 @@ import org.thoughtcrime.securesms.webrtc.HangUpRtcOnPstnCallAnsweredListener
 import org.thoughtcrime.securesms.webrtc.HangUpRtcTelephonyCallback
 import org.thoughtcrime.securesms.webrtc.IncomingPstnCallReceiver
 import org.thoughtcrime.securesms.webrtc.NetworkChangeReceiver
-import org.thoughtcrime.securesms.webrtc.PeerConnectionException
 import org.thoughtcrime.securesms.webrtc.PowerButtonReceiver
 import org.thoughtcrime.securesms.webrtc.ProximityLockRelease
 import org.thoughtcrime.securesms.webrtc.UncaughtExceptionHandlerManager
@@ -391,6 +390,7 @@ class WebRtcCallService : Service(), CallManager.WebRtcListener {
             )
         ) {
             Log.w(TAG, "handling audio command not in call")
+            terminate()
             return
         }
         callManager.handleAudioCommand(audioCommand)
@@ -514,13 +514,23 @@ class WebRtcCallService : Service(), CallManager.WebRtcListener {
     }
 
     private fun handleAnswerCall(intent: Intent) {
-        val recipient = callManager.recipient ?: return
-        val pending = callManager.pendingOffer ?: return
-        val callId = callManager.callId ?: return
+        val recipient = callManager.recipient ?: run {
+            terminate()
+            return
+        }
+        val pending = callManager.pendingOffer ?: run {
+            terminate()
+            return
+        }
+        val callId = callManager.callId ?: run {
+            terminate()
+            return
+        }
         val timestamp = callManager.pendingOfferTime
 
         if (callManager.currentConnectionState != CallState.RemoteRing) {
             Log.e(TAG, "Can only answer from ringing!")
+            terminate()
             return
         }
 
@@ -597,7 +607,7 @@ class WebRtcCallService : Service(), CallManager.WebRtcListener {
     private fun handleRemoteHangup(intent: Intent) {
         if (callManager.callId != getCallId(intent)) {
             Log.e(TAG, "Hangup for non-active call...")
-            stopForeground(true)
+            terminate()
             return
         }
 
@@ -640,7 +650,7 @@ class WebRtcCallService : Service(), CallManager.WebRtcListener {
                 callId,
                 SessionDescription(SessionDescription.Type.ANSWER, description)
             )
-        } catch (e: PeerConnectionException) {
+        } catch (e: Exception) {
             terminate()
         }
     }
@@ -652,6 +662,7 @@ class WebRtcCallService : Service(), CallManager.WebRtcListener {
         val sdps = intent.getStringArrayExtra(EXTRA_ICE_SDP) ?: return
         if (sdpMids.size != sdpLineIndexes.size || sdpLineIndexes.size != sdps.size) {
             Log.w(TAG, "sdp info not of equal length")
+            terminate()
             return
         }
         val iceCandidates = sdpMids.indices.map { index ->

@@ -29,6 +29,10 @@ import org.webrtc.IceCandidate
 
 class CallMessageProcessor(private val context: Context, private val textSecurePreferences: TextSecurePreferences, lifecycle: Lifecycle, private val storage: StorageProtocol) {
 
+    companion object {
+        private const val VERY_EXPIRED_TIME = 60 * 15 * 1000L
+    }
+
     init {
         lifecycle.coroutineScope.launch(IO) {
             while (isActive) {
@@ -53,6 +57,13 @@ class CallMessageProcessor(private val context: Context, private val textSecureP
                     }
                     continue
                 }
+
+                val isVeryExpired = (nextMessage.sentTimestamp?:0) + VERY_EXPIRED_TIME < System.currentTimeMillis()
+                if (isVeryExpired) {
+                    Log.e("Loki", "Dropping very expired call message")
+                    continue
+                }
+
                 when (nextMessage.type) {
                     OFFER -> incomingCall(nextMessage)
                     ANSWER -> incomingAnswer(nextMessage)
