@@ -30,13 +30,18 @@ import org.thoughtcrime.securesms.ApplicationContext;
 import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper;
 
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 public abstract class Database {
 
   protected static final String ID_WHERE = "_id = ?";
   protected static final String ID_IN = "_id IN (?)";
 
-  protected       SQLCipherOpenHelper databaseHelper;
+  private static AtomicBoolean readerSet = new AtomicBoolean();
+  private static AtomicReference<SQLiteDatabase> readableDb = new AtomicReference<>(null);
+
+  private         SQLCipherOpenHelper databaseHelper;
   protected final Context             context;
   private   final WindowDebouncer     conversationListNotificationDebouncer;
   private   final Runnable            conversationListUpdater;
@@ -100,7 +105,8 @@ public abstract class Database {
   }
 
   protected SQLiteDatabase getReadableDatabase() {
-    return databaseHelper.getReadableDatabase();
+    readableDb.compareAndSet(null, databaseHelper.getReadableDatabase());
+    return readableDb.get();
   }
 
   protected SQLiteDatabase getWritableDatabase() {

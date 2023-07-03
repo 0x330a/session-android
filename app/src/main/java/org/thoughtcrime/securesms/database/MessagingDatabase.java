@@ -104,7 +104,7 @@ public abstract class MessagingDatabase extends Database implements MmsSmsColumn
   }
 
   protected <D extends Document<I>, I> void removeFromDocument(long messageId, String column, I object, Class<D> clazz) throws IOException {
-    SQLiteDatabase database = databaseHelper.getWritableDatabase();
+    SQLiteDatabase database = getWritableDatabase();
     database.beginTransaction();
 
     try {
@@ -136,7 +136,7 @@ public abstract class MessagingDatabase extends Database implements MmsSmsColumn
   }
 
   protected <T extends Document<I>, I> void addToDocument(long messageId, String column, List<I> objects, Class<T> clazz) throws IOException {
-    SQLiteDatabase database = databaseHelper.getWritableDatabase();
+    SQLiteDatabase database = getWritableDatabase();
     database.beginTransaction();
 
     try {
@@ -199,7 +199,7 @@ public abstract class MessagingDatabase extends Database implements MmsSmsColumn
   }
 
   public void migrateThreadId(long oldThreadId, long newThreadId) {
-    SQLiteDatabase db = databaseHelper.getWritableDatabase();
+    SQLiteDatabase db = getWritableDatabase();
     String where = THREAD_ID+" = ?";
     String[] args = new String[]{oldThreadId+""};
     ContentValues contentValues = new ContentValues();

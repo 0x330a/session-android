@@ -22,7 +22,7 @@ class LokiThreadDatabase(context: Context, helper: SQLCipherOpenHelper) : Databa
     }
 
     fun getAllOpenGroups(): Map<Long, OpenGroup> {
-        val database = databaseHelper.readableDatabase
+        val database = readableDatabase
         var cursor: Cursor? = null
         val result = mutableMapOf<Long, OpenGroup>()
         try {
@@ -45,7 +45,7 @@ class LokiThreadDatabase(context: Context, helper: SQLCipherOpenHelper) : Databa
         if (threadID < 0) {
             return null
         }
-        val database = databaseHelper.readableDatabase
+        val database = readableDatabase
         return database.get(publicChatTable, "${Companion.threadID} = ?", arrayOf(threadID.toString())) { cursor ->
             val json = cursor.getString(publicChat)
             OpenGroup.fromJSON(json)
@@ -53,7 +53,7 @@ class LokiThreadDatabase(context: Context, helper: SQLCipherOpenHelper) : Databa
     }
 
     fun getThreadId(openGroup: OpenGroup): Long? {
-        val database = databaseHelper.readableDatabase
+        val database = readableDatabase
         return database.get(publicChatTable, "$publicChat = ?", arrayOf(JsonUtil.toJson(openGroup.toJson()))) { cursor ->
             cursor.getLong(threadID)
         }
@@ -63,7 +63,7 @@ class LokiThreadDatabase(context: Context, helper: SQLCipherOpenHelper) : Databa
         if (threadID < 0) {
             return
         }
-        val database = databaseHelper.writableDatabase
+        val database = writableDatabase
         val contentValues = ContentValues(2)
         contentValues.put(Companion.threadID, threadID)
         contentValues.put(publicChat, JsonUtil.toJson(openGroup.toJson()))
@@ -73,7 +73,7 @@ class LokiThreadDatabase(context: Context, helper: SQLCipherOpenHelper) : Databa
     fun removeOpenGroupChat(threadID: Long) {
         if (threadID < 0) return
 
-        val database = databaseHelper.writableDatabase
+        val database = writableDatabase
         database.delete(publicChatTable,"${Companion.threadID} = ?", arrayOf(threadID.toString()))
     }
 

@@ -73,7 +73,7 @@ class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper) : Messa
     override fun getTableName() = TABLE_NAME
 
     fun getMessageCountForThread(threadId: Long): Int {
-        val db = databaseHelper.readableDatabase
+        val db = readableDatabase
         db.query(
             TABLE_NAME,
             arrayOf("COUNT(*)"),
@@ -89,7 +89,7 @@ class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper) : Messa
     }
 
     fun isOutgoingMessage(timestamp: Long): Boolean =
-        databaseHelper.writableDatabase.query(
+        writableDatabase.query(
             TABLE_NAME,
             arrayOf(ID, THREAD_ID, MESSAGE_BOX, ADDRESS),
             DATE_SENT + " = ?",
@@ -111,7 +111,7 @@ class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper) : Messa
         deliveryReceipt: Boolean,
         readReceipt: Boolean
     ) {
-        val database = databaseHelper.writableDatabase
+        val database = writableDatabase
         var cursor: Cursor? = null
         var found = false
         try {
@@ -178,7 +178,7 @@ class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper) : Messa
     }
 
     fun updateSentTimestamp(messageId: Long, newTimestamp: Long, threadId: Long) {
-        val db = databaseHelper.writableDatabase
+        val db = writableDatabase
         db.execSQL(
             "UPDATE $TABLE_NAME SET $DATE_SENT = ? WHERE $ID = ?",
             arrayOf(newTimestamp.toString(), messageId.toString())
@@ -190,7 +190,7 @@ class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper) : Messa
     fun getThreadIdForMessage(id: Long): Long {
         val sql = "SELECT $THREAD_ID FROM $TABLE_NAME WHERE $ID = ?"
         val sqlArgs = arrayOf(id.toString())
-        val db = databaseHelper.readableDatabase
+        val db = readableDatabase
         var cursor: Cursor? = null
         return try {
             cursor = db.rawQuery(sql, sqlArgs)
@@ -201,7 +201,7 @@ class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper) : Messa
     }
 
     private fun rawQuery(where: String, arguments: Array<String>?): Cursor {
-        val database = databaseHelper.readableDatabase
+        val database = readableDatabase
         return database.rawQuery(
             "SELECT " + MMS_PROJECTION.joinToString(",") + " FROM " + TABLE_NAME +
                     " LEFT OUTER JOIN " + AttachmentDatabase.TABLE_NAME + " ON (" + TABLE_NAME + "." + ID + " = " + AttachmentDatabase.TABLE_NAME + "." + AttachmentDatabase.MMS_ID + ")" +
@@ -228,7 +228,7 @@ class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper) : Messa
         maskOn: Long,
         threadId: Optional<Long>
     ) {
-        val db = databaseHelper.writableDatabase
+        val db = writableDatabase
         db.execSQL(
             "UPDATE " + TABLE_NAME +
                     " SET " + MESSAGE_BOX + " = (" + MESSAGE_BOX + " & " + (MmsSmsColumns.Types.TOTAL_MASK - maskOff) + " | " + maskOn + " )" +
@@ -278,12 +278,12 @@ class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper) : Messa
     override fun markUnidentified(messageId: Long, unidentified: Boolean) {
         val contentValues = ContentValues()
         contentValues.put(UNIDENTIFIED, if (unidentified) 1 else 0)
-        val db = databaseHelper.writableDatabase
+        val db = writableDatabase
         db.update(TABLE_NAME, contentValues, ID_WHERE, arrayOf(messageId.toString()))
     }
 
     override fun markAsDeleted(messageId: Long, read: Boolean, hasMention: Boolean) {
-        val database = databaseHelper.writableDatabase
+        val database = writableDatabase
         val contentValues = ContentValues()
         contentValues.put(READ, 1)
         contentValues.put(BODY, "")
@@ -303,14 +303,14 @@ class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper) : Messa
     override fun markExpireStarted(messageId: Long, startedTimestamp: Long) {
         val contentValues = ContentValues()
         contentValues.put(EXPIRE_STARTED, startedTimestamp)
-        val db = databaseHelper.writableDatabase
+        val db = writableDatabase
         db.update(TABLE_NAME, contentValues, ID_WHERE, arrayOf(messageId.toString()))
         val threadId = getThreadIdForMessage(messageId)
         notifyConversationListeners(threadId)
     }
 
     fun markAsNotified(id: Long) {
-        val database = databaseHelper.writableDatabase
+        val database = writableDatabase
         val contentValues = ContentValues()
         contentValues.put(NOTIFIED, 1)
         database.update(TABLE_NAME, contentValues, ID_WHERE, arrayOf(id.toString()))
@@ -331,7 +331,7 @@ class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper) : Messa
     }
 
     private fun setMessagesRead(where: String, arguments: Array<String>?): List<MarkedMessageInfo> {
-        val database = databaseHelper.writableDatabase
+        val database = writableDatabase
         val result: MutableList<MarkedMessageInfo> = LinkedList()
         var cursor: Cursor? = null
         database.beginTransaction()
@@ -762,7 +762,7 @@ class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper) : Messa
         contentValues: ContentValues,
         insertListener: InsertListener?,
     ): Long {
-        val db = databaseHelper.writableDatabase
+        val db = writableDatabase
         val partsDatabase = get(context).attachmentDatabase()
         val allAttachments: MutableList<Attachment?> = LinkedList()
         val contactAttachments =
@@ -792,7 +792,7 @@ class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper) : Messa
             if (!serializedContacts.isNullOrEmpty()) {
                 val contactValues = ContentValues()
                 contactValues.put(SHARED_CONTACTS, serializedContacts)
-                val database = databaseHelper.readableDatabase
+                val database = readableDatabase
                 val rows = database.update(
                     TABLE_NAME,
                     contactValues,
@@ -806,7 +806,7 @@ class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper) : Messa
             if (!serializedPreviews.isNullOrEmpty()) {
                 val contactValues = ContentValues()
                 contactValues.put(LINK_PREVIEWS, serializedPreviews)
-                val database = databaseHelper.readableDatabase
+                val database = readableDatabase
                 val rows = database.update(
                     TABLE_NAME,
                     contactValues,
@@ -836,7 +836,7 @@ class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper) : Messa
             }
         }
         val query = queryBuilder.toString()
-        val db = databaseHelper.writableDatabase
+        val db = writableDatabase
         val values = ContentValues(2)
         values.put(QUOTE_MISSING, 1)
         values.put(QUOTE_AUTHOR, "")
@@ -866,7 +866,7 @@ class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper) : Messa
         queue(Runnable { attachmentDatabase.deleteAttachmentsForMessages(messageIds) })
         val groupReceiptDatabase = get(context).groupReceiptDatabase()
         groupReceiptDatabase.deleteRowsForMessages(messageIds)
-        val database = databaseHelper.writableDatabase
+        val database = writableDatabase
         database.delete(TABLE_NAME, idsAsString, null)
         notifyConversationListListeners()
         notifyStickerListeners()
@@ -879,7 +879,7 @@ class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper) : Messa
         queue(Runnable { attachmentDatabase.deleteAttachmentsForMessage(messageId) })
         val groupReceiptDatabase = get(context).groupReceiptDatabase()
         groupReceiptDatabase.deleteRowsForMessage(messageId)
-        val database = databaseHelper.writableDatabase
+        val database = writableDatabase
         database!!.delete(TABLE_NAME, ID_WHERE, arrayOf(messageId.toString()))
         val threadDeleted = get(context).threadDatabase().update(threadId, false, true)
         notifyConversationListeners(threadId)
@@ -895,7 +895,7 @@ class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper) : Messa
         queue(Runnable { attachmentDatabase.deleteAttachmentsForMessages(messageIds) })
         groupReceiptDatabase.deleteRowsForMessages(messageIds)
 
-        val database = databaseHelper.writableDatabase
+        val database = writableDatabase
         database!!.delete(TABLE_NAME, ID_IN, arrayOf(messageIds.joinToString(",")))
 
         val threadDeleted = get(context).threadDatabase().update(threadId, false, true)
@@ -909,7 +909,7 @@ class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper) : Messa
         val contentValues = ContentValues(1)
         contentValues.put(THREAD_ID, toId)
 
-        val db = databaseHelper.writableDatabase
+        val db = writableDatabase
         db.update(SmsDatabase.TABLE_NAME, contentValues, "$THREAD_ID = ?", arrayOf("$fromId"))
         notifyConversationListeners(toId)
         notifyConversationListListeners()
@@ -986,7 +986,7 @@ class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper) : Messa
         message: IncomingMediaMessage?,
         threadId: Long
     ): Boolean {
-        val database = databaseHelper.readableDatabase
+        val database = readableDatabase
         val cursor: Cursor? = database!!.query(
             TABLE_NAME,
             null,
@@ -1007,7 +1007,7 @@ class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper) : Messa
     }
 
     private fun isDuplicate(message: IncomingMediaMessage?, threadId: Long): Boolean {
-        val database = databaseHelper.readableDatabase
+        val database = readableDatabase
         val cursor: Cursor? = database!!.query(
             TABLE_NAME,
             null,
@@ -1028,7 +1028,7 @@ class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper) : Messa
     }
 
     private fun isDuplicate(message: OutgoingMediaMessage?, threadId: Long): Boolean {
-        val database = databaseHelper.readableDatabase
+        val database = readableDatabase
         val cursor: Cursor? = database!!.query(
             TABLE_NAME,
             null,
@@ -1051,7 +1051,7 @@ class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper) : Messa
     }
 
     fun isSent(messageId: Long): Boolean {
-        val database = databaseHelper.readableDatabase
+        val database = readableDatabase
         database!!.query(
             TABLE_NAME,
             arrayOf(MESSAGE_BOX),
@@ -1071,7 +1071,7 @@ class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper) : Messa
 
     /*package*/
     private fun deleteThreads(threadIds: Set<Long>) {
-        val db = databaseHelper.writableDatabase
+        val db = writableDatabase
         val where = StringBuilder()
         var cursor: Cursor? = null
         for (threadId in threadIds) {
@@ -1107,7 +1107,7 @@ class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper) : Messa
     fun deleteMessagesInThreadBeforeDate(threadId: Long, date: Long) {
         var cursor: Cursor? = null
         try {
-            val db = databaseHelper.readableDatabase
+            val db = readableDatabase
             var where =
                 THREAD_ID + " = ? AND (CASE (" + MESSAGE_BOX + " & " + MmsSmsColumns.Types.BASE_TYPE_MASK + ") "
             for (outgoingType in MmsSmsColumns.Types.OUTGOING_MESSAGE_TYPES) {
@@ -1143,7 +1143,7 @@ class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper) : Messa
     fun setQuoteMissing(messageId: Long): Int {
         val contentValues = ContentValues()
         contentValues.put(QUOTE_MISSING, 1)
-        val database = databaseHelper.writableDatabase
+        val database = writableDatabase
         return database!!.update(
             TABLE_NAME,
             contentValues,

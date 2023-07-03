@@ -22,7 +22,7 @@ class GlobalSearchInputLayout @JvmOverloads constructor(
         View.OnClickListener,
         TextWatcher, TextView.OnEditorActionListener {
 
-    var binding: ViewGlobalSearchInputBinding = ViewGlobalSearchInputBinding.inflate(LayoutInflater.from(context), this, true)
+    val binding: ViewGlobalSearchInputBinding by lazy { ViewGlobalSearchInputBinding.inflate(LayoutInflater.from(context), this, true) }
 
     var listener: GlobalSearchInputLayoutListener? = null
 

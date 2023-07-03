@@ -113,7 +113,7 @@ public class SearchDatabase extends Database {
   }
 
   public Cursor queryMessages(@NonNull String query) {
-    SQLiteDatabase db          = databaseHelper.getReadableDatabase();
+    SQLiteDatabase db          = getReadableDatabase();
     String         prefixQuery = adjustQuery(query);
 
     int queryLimit = Math.min(query.length()*50,500);
@@ -124,7 +124,7 @@ public class SearchDatabase extends Database {
   }
 
   public Cursor queryMessages(@NonNull String query, long threadId) {
-    SQLiteDatabase db          = databaseHelper.getReadableDatabase();
+    SQLiteDatabase db          = getReadableDatabase();
     String         prefixQuery = adjustQuery(query);
 
     Cursor cursor = db.rawQuery(MESSAGES_FOR_THREAD_QUERY, new String[] { prefixQuery, String.valueOf(threadId), prefixQuery, String.valueOf(threadId) });

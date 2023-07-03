@@ -1,8 +1,8 @@
 package org.thoughtcrime.securesms.database
 
 import android.content.Context
-import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper
 import org.session.libsession.utilities.TextSecurePreferences
+import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper
 
 class LokiUserDatabase(context: Context, helper: SQLCipherOpenHelper) : Database(context, helper) {
 
@@ -23,7 +23,7 @@ class LokiUserDatabase(context: Context, helper: SQLCipherOpenHelper) : Database
         if (publicKey == TextSecurePreferences.getLocalNumber(context)) {
             return TextSecurePreferences.getProfileName(context)
         } else {
-            val database = databaseHelper.readableDatabase
+            val database = readableDatabase
             val result = database.get(displayNameTable, "${Companion.publicKey} = ?", arrayOf( publicKey )) { cursor ->
                 cursor.getString(cursor.getColumnIndexOrThrow(displayName))
             } ?: return null

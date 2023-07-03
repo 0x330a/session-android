@@ -504,7 +504,7 @@ public class MmsSmsDatabase extends Database {
     @SuppressWarnings("deprecation")
     String query      = outerQueryBuilder.buildQuery(projection, null, null, null, null, null, null);
 
-    SQLiteDatabase db = databaseHelper.getReadableDatabase();
+    SQLiteDatabase db = getReadableDatabase();
     return db.rawQuery(query, null);
   }
 

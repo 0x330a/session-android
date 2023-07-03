@@ -43,7 +43,7 @@ public class GroupReceiptDatabase extends Database {
   }
 
   public void insert(List<Address> addresses, long mmsId, int status, long timestamp) {
-    SQLiteDatabase db = databaseHelper.getWritableDatabase();
+    SQLiteDatabase db = getWritableDatabase();
 
     for (Address address : addresses) {
       ContentValues values = new ContentValues(4);
@@ -57,7 +57,7 @@ public class GroupReceiptDatabase extends Database {
   }
 
   public void update(Address address, long mmsId, int status, long timestamp) {
-    SQLiteDatabase db     = databaseHelper.getWritableDatabase();
+    SQLiteDatabase db     = getWritableDatabase();
     ContentValues  values = new ContentValues(2);
     values.put(STATUS, status);
     values.put(TIMESTAMP, timestamp);
@@ -67,7 +67,7 @@ public class GroupReceiptDatabase extends Database {
   }
 
   public void setUnidentified(Address address, long mmsId, boolean unidentified) {
-    SQLiteDatabase db     = databaseHelper.getWritableDatabase();
+    SQLiteDatabase db     = getWritableDatabase();
     ContentValues  values = new ContentValues(1);
     values.put(UNIDENTIFIED, unidentified ? 1 : 0);
 
@@ -77,7 +77,7 @@ public class GroupReceiptDatabase extends Database {
   }
 
   public @NonNull List<GroupReceiptInfo> getGroupReceiptInfo(long mmsId) {
-    SQLiteDatabase         db      = databaseHelper.getReadableDatabase();
+    SQLiteDatabase         db      = getReadableDatabase();
     List<GroupReceiptInfo> results = new LinkedList<>();
 
     try (Cursor cursor = db.query(TABLE_NAME, null, MMS_ID + " = ?", new String[] {String.valueOf(mmsId)}, null, null, null)) {
@@ -101,22 +101,22 @@ public class GroupReceiptDatabase extends Database {
       }
     }
     String idsAsString = queryBuilder.toString();
-    SQLiteDatabase db = databaseHelper.getWritableDatabase();
+    SQLiteDatabase db = getWritableDatabase();
     db.delete(TABLE_NAME, idsAsString, null);
   }
 
   void deleteRowsForMessage(long mmsId) {
-    SQLiteDatabase db = databaseHelper.getWritableDatabase();
+    SQLiteDatabase db = getWritableDatabase();
     db.delete(TABLE_NAME, MMS_ID + " = ?", new String[] {String.valueOf(mmsId)});
   }
 
   void deleteRowsForMessages(long[] mmsIds) {
-    SQLiteDatabase db = databaseHelper.getWritableDatabase();
+    SQLiteDatabase db = getWritableDatabase();
     db.delete(TABLE_NAME, MMS_ID + " IN (?)", new String[] {StringUtils.join(mmsIds, ',')});
   }
 
   void deleteAllRows() {
-    SQLiteDatabase db = databaseHelper.getWritableDatabase();
+    SQLiteDatabase db = getWritableDatabase();
     db.delete(TABLE_NAME, null, null);
   }
 

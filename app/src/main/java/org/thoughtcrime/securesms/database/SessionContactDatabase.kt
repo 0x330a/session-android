@@ -35,14 +35,14 @@ class SessionContactDatabase(context: Context, helper: SQLCipherOpenHelper) : Da
     }
 
     fun getContactWithSessionID(sessionID: String): Contact? {
-        val database = databaseHelper.readableDatabase
+        val database = readableDatabase
         return database.get(sessionContactTable, "${Companion.sessionID} = ?", arrayOf( sessionID )) { cursor ->
             contactFromCursor(cursor)
         }
     }
 
     fun getAllContacts(): Set<Contact> {
-        val database = databaseHelper.readableDatabase
+        val database = readableDatabase
         return database.getAll(sessionContactTable, null, null) { cursor ->
             contactFromCursor(cursor)
         }.filter { contact ->
@@ -52,7 +52,7 @@ class SessionContactDatabase(context: Context, helper: SQLCipherOpenHelper) : Da
     }
 
     fun setContactIsTrusted(contact: Contact, isTrusted: Boolean, threadID: Long) {
-        val database = databaseHelper.writableDatabase
+        val database = writableDatabase
         val contentValues = ContentValues(1)
         contentValues.put(Companion.isTrusted, if (isTrusted) 1 else 0)
         database.update(sessionContactTable, contentValues, "$sessionID = ?", arrayOf( contact.sessionID ))
@@ -63,7 +63,7 @@ class SessionContactDatabase(context: Context, helper: SQLCipherOpenHelper) : Da
     }
 
     fun setContact(contact: Contact) {
-        val database = databaseHelper.writableDatabase
+        val database = writableDatabase
         val contentValues = ContentValues(8)
         contentValues.put(sessionID, contact.sessionID)
         contentValues.put(name, contact.name)
@@ -95,7 +95,7 @@ class SessionContactDatabase(context: Context, helper: SQLCipherOpenHelper) : Da
     }
 
     fun queryContactsByName(constraint: String): Cursor {
-        return databaseHelper.readableDatabase.query(
+        return readableDatabase.query(
             sessionContactTable, null, " $name LIKE ? OR $nickname LIKE ?", arrayOf(
                 "%$constraint%",
                 "%$constraint%"

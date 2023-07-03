@@ -96,7 +96,9 @@ class PathStatusView : View {
     private fun update() {
         if (updateJob?.isActive != true) { // false or null
             updateJob = ViewUtil.getActivityLifecycle(this)?.coroutineScope?.launchWhenStarted {
-                val paths = withContext(Dispatchers.IO) { OnionRequestAPI.paths }
+                val paths = withContext(Dispatchers.IO) {
+                    OnionRequestAPI.paths
+                }
                 if (paths.isNotEmpty()) {
                     setBackgroundResource(R.drawable.accent_dot)
                     val hasPathsColor = context.getColor(R.color.accent_green)

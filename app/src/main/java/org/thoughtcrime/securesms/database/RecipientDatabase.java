@@ -151,7 +151,7 @@ public class RecipientDatabase extends Database {
   }
 
   public RecipientReader getRecipientsWithNotificationChannels() {
-    SQLiteDatabase database = databaseHelper.getReadableDatabase();
+    SQLiteDatabase database = getReadableDatabase();
     Cursor         cursor   = database.query(TABLE_NAME, new String[] {ID, ADDRESS}, NOTIFICATION_CHANNEL  + " NOT NULL",
                                              null, null, null, null, null);
 
@@ -159,7 +159,7 @@ public class RecipientDatabase extends Database {
   }
 
   public Optional<RecipientSettings> getRecipientSettings(@NonNull Address address) {
-    SQLiteDatabase database = databaseHelper.getReadableDatabase();
+    SQLiteDatabase database = getReadableDatabase();
 
     try (Cursor cursor = database.query(TABLE_NAME, null, ADDRESS + " = ?", new String[]{address.serialize()}, null, null, null)) {
 
@@ -396,7 +396,7 @@ public class RecipientDatabase extends Database {
   }
 
   private void updateOrInsert(Address address, ContentValues contentValues) {
-    SQLiteDatabase database = databaseHelper.getWritableDatabase();
+    SQLiteDatabase database = getWritableDatabase();
 
     database.beginTransaction();
 
@@ -413,7 +413,7 @@ public class RecipientDatabase extends Database {
   }
 
   public List<Recipient> getBlockedContacts() {
-    SQLiteDatabase database = databaseHelper.getReadableDatabase();
+    SQLiteDatabase database = getReadableDatabase();
 
     Cursor         cursor   = database.query(TABLE_NAME, new String[] {ID, ADDRESS}, BLOCK + " = 1",
             null, null, null, null, null);

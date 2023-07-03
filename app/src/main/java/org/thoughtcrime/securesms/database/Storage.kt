@@ -615,7 +615,7 @@ open class Storage(context: Context, helper: SQLCipherOpenHelper, private val co
 
     override fun getOpenGroup(threadId: Long): OpenGroup? {
         if (threadId.toInt() < 0) { return null }
-        val database = databaseHelper.readableDatabase
+        val database = readableDatabase
         return database.get(LokiThreadDatabase.publicChatTable, "${LokiThreadDatabase.threadID} = ?", arrayOf( threadId.toString() )) { cursor ->
             val publicChatAsJson = cursor.getString(LokiThreadDatabase.publicChat)
             OpenGroup.fromJSON(publicChatAsJson)

@@ -3,16 +3,17 @@ package org.thoughtcrime.securesms.database;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+
 import androidx.annotation.NonNull;
-import org.session.libsignal.utilities.Log;
 
 import net.zetetic.database.sqlcipher.SQLiteDatabase;
 
-import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper;
-import org.session.libsignal.utilities.Base64;
-import org.session.libsignal.utilities.guava.Optional;
 import org.session.libsignal.messages.SignalServiceEnvelope;
+import org.session.libsignal.utilities.Base64;
+import org.session.libsignal.utilities.Log;
 import org.session.libsignal.utilities.Util;
+import org.session.libsignal.utilities.guava.Optional;
+import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper;
 
 import java.io.IOException;
 
@@ -55,7 +56,7 @@ public class PushDatabase extends Database {
       values.put(SERVER_TIMESTAMP, envelope.getServerTimestamp());
       values.put(SERVER_GUID, "");
 
-      return databaseHelper.getWritableDatabase().insert(TABLE_NAME, null, values);
+      return getWritableDatabase().insert(TABLE_NAME, null, values);
     }
   }
 
@@ -63,7 +64,7 @@ public class PushDatabase extends Database {
     Cursor cursor = null;
 
     try {
-      cursor = databaseHelper.getReadableDatabase().query(TABLE_NAME, null, ID_WHERE,
+      cursor = getReadableDatabase().query(TABLE_NAME, null, ID_WHERE,
                                                           new String[] {String.valueOf(id)},
                                                           null, null, null);
 
@@ -89,11 +90,11 @@ public class PushDatabase extends Database {
   }
 
   public Cursor getPending() {
-    return databaseHelper.getReadableDatabase().query(TABLE_NAME, null, null, null, null, null, null);
+    return getReadableDatabase().query(TABLE_NAME, null, null, null, null, null, null);
   }
 
   public void delete(long id) {
-    databaseHelper.getWritableDatabase().delete(TABLE_NAME, ID_WHERE, new String[] {id+""});
+    getWritableDatabase().delete(TABLE_NAME, ID_WHERE, new String[] {id+""});
   }
 
   public Reader readerFor(Cursor cursor) {
@@ -101,7 +102,7 @@ public class PushDatabase extends Database {
   }
 
   private Optional<Long> find(SignalServiceEnvelope envelope) {
-    SQLiteDatabase database = databaseHelper.getReadableDatabase();
+    SQLiteDatabase database = getReadableDatabase();
     Cursor         cursor   = null;
 
     try {

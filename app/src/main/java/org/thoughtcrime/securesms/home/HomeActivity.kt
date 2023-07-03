@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
+import android.os.Trace
 import android.text.SpannableString
 import android.widget.Toast
 import androidx.activity.viewModels
@@ -159,6 +160,7 @@ class HomeActivity : PassphraseRequiredActionBarActivity(),
 
     // region Lifecycle
     override fun onCreate(savedInstanceState: Bundle?, isReady: Boolean) {
+        Trace.beginSection("onCreate")
         super.onCreate(savedInstanceState, isReady)
         // Set content view
         binding = ActivityHomeBinding.inflate(layoutInflater)
@@ -176,6 +178,7 @@ class HomeActivity : PassphraseRequiredActionBarActivity(),
         binding.sessionToolbar.disableClipping()
         // Set up seed reminder view
         lifecycleScope.launchWhenStarted {
+            Trace.beginSection("seedReminder")
             val hasViewedSeed = textSecurePreferences.getHasViewedSeed()
             if (!hasViewedSeed) {
                 binding.seedReminderView.isVisible = true
@@ -186,6 +189,7 @@ class HomeActivity : PassphraseRequiredActionBarActivity(),
             } else {
                 binding.seedReminderView.isVisible = false
             }
+            Trace.endSection()
         }
         setupMessageRequestsBanner()
         // Set up recycler view
@@ -226,6 +230,7 @@ class HomeActivity : PassphraseRequiredActionBarActivity(),
         }
 
         lifecycleScope.launchWhenStarted {
+            Trace.beginSection("launchWhenStarted")
             launch(Dispatchers.IO) {
                 // Double check that the long poller is up
                 (applicationContext as ApplicationContext).startPollingIfNeeded()
@@ -296,6 +301,7 @@ class HomeActivity : PassphraseRequiredActionBarActivity(),
                     globalSearchAdapter.setNewData(result.query, newData)
                 }
             }
+            Trace.endSection()
         }
         EventBus.getDefault().register(this@HomeActivity)
         if (intent.hasExtra(FROM_ONBOARDING)
@@ -306,6 +312,7 @@ class HomeActivity : PassphraseRequiredActionBarActivity(),
                 .request(Manifest.permission.POST_NOTIFICATIONS)
                 .execute()
         }
+        Trace.endSection()
     }
 
     override fun onInputFocusChanged(hasFocus: Boolean) {
@@ -361,6 +368,7 @@ class HomeActivity : PassphraseRequiredActionBarActivity(),
 
     override fun onResume() {
         super.onResume()
+        Trace.beginSection("onResume")
         ApplicationContext.getInstance(this).messageNotifier.setHomeScreenVisible(true)
         if (textSecurePreferences.getLocalNumber() == null) { return; } // This can be the case after a secondary device is auto-cleared
         IdentityKeyUtil.checkUpdate(this)
@@ -385,6 +393,7 @@ class HomeActivity : PassphraseRequiredActionBarActivity(),
         if (currentThemeState == textSecurePreferences.themeState() && !homeViewModel.getObservable(this).hasActiveObservers()) {
             startObservingUpdates()
         }
+        Trace.endSection()
     }
 
     override fun onPause() {
