@@ -33,7 +33,6 @@ import androidx.lifecycle.ProcessLifecycleOwner;
 
 import org.conscrypt.Conscrypt;
 import org.session.libsession.avatars.AvatarHelper;
-import org.session.libsession.database.MessageDataProvider;
 import org.session.libsession.messaging.MessagingModuleConfiguration;
 import org.session.libsession.messaging.sending_receiving.notifications.MessageNotifier;
 import org.session.libsession.messaging.sending_receiving.pollers.ClosedGroupPollerV2;
@@ -54,7 +53,6 @@ import org.session.libsignal.utilities.Log;
 import org.session.libsignal.utilities.ThreadUtils;
 import org.signal.aesgcmprovider.AesGcmProvider;
 import org.thoughtcrime.securesms.components.TypingStatusSender;
-import org.thoughtcrime.securesms.crypto.KeyPairUtilities;
 import org.thoughtcrime.securesms.database.EmojiSearchDatabase;
 import org.thoughtcrime.securesms.database.LokiAPIDatabase;
 import org.thoughtcrime.securesms.database.Storage;
@@ -85,7 +83,6 @@ import org.thoughtcrime.securesms.sskenvironment.ReadReceiptManager;
 import org.thoughtcrime.securesms.sskenvironment.TypingStatusRepository;
 import org.thoughtcrime.securesms.util.Broadcaster;
 import org.thoughtcrime.securesms.util.dynamiclanguage.LocaleParseHelper;
-import org.thoughtcrime.securesms.webrtc.CallMessageProcessor;
 import org.webrtc.PeerConnectionFactory;
 import org.webrtc.PeerConnectionFactory.InitializationOptions;
 import org.webrtc.voiceengine.WebRtcAudioManager;
@@ -102,8 +99,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.Timer;
 import java.util.concurrent.Executors;
-
-import javax.inject.Inject;
 
 import dagger.hilt.EntryPoints;
 import dagger.hilt.android.HiltAndroidApp;
@@ -131,7 +126,6 @@ public class ApplicationContext extends Application implements DefaultLifecycleO
     private TypingStatusRepository typingStatusRepository;
     private TypingStatusSender typingStatusSender;
     private ReadReceiptManager readReceiptManager;
-    private ProfileManager profileManager;
     public MessageNotifier messageNotifier = null;
     public Poller poller = null;
     public Broadcaster broadcaster = null;
@@ -141,20 +135,12 @@ public class ApplicationContext extends Application implements DefaultLifecycleO
     private Handler conversationListHandler;
     private PersistentLogger persistentLogger;
 
-    @Inject LokiAPIDatabase lokiAPIDatabase;
-    @Inject public Storage storage;
-    @Inject MessageDataProvider messageDataProvider;
-    @Inject TextSecurePreferences textSecurePreferences;
-    @Inject ConfigFactory configFactory;
-    CallMessageProcessor callMessageProcessor;
-    MessagingModuleConfiguration messagingModuleConfiguration;
-
     private volatile boolean isAppVisible;
 
     @Override
     public Object getSystemService(String name) {
         if (MessagingModuleConfiguration.MESSAGING_MODULE_SERVICE.equals(name)) {
-            return messagingModuleConfiguration;
+            return getDatabaseComponent().messagingModuleConfiguration();
         }
         return super.getSystemService(name);
     }
@@ -163,8 +149,20 @@ public class ApplicationContext extends Application implements DefaultLifecycleO
         return (ApplicationContext) context.getApplicationContext();
     }
 
+    public AppComponent getAppComponent() {
+        return EntryPoints.get(getApplicationContext(), AppComponent.class);
+    }
+
     public TextSecurePreferences getPrefs() {
-        return EntryPoints.get(getApplicationContext(), AppComponent.class).getPrefs();
+        return getAppComponent().getPrefs();
+    }
+
+    public Storage getStorage() {
+        return getDatabaseComponent().storage();
+    }
+
+    public ConfigFactory getConfigFactory() {
+        return getDatabaseComponent().configFactory();
     }
 
     public DatabaseComponent getDatabaseComponent() {
@@ -196,24 +194,19 @@ public class ApplicationContext extends Application implements DefaultLifecycleO
     @Override
     public void notifyUpdates(@NonNull ConfigBase forConfigObject) {
         // forward to the config factory / storage ig
-        if (forConfigObject instanceof UserProfile && !textSecurePreferences.getConfigurationMessageSynced()) {
-            textSecurePreferences.setConfigurationMessageSynced(true);
+        TextSecurePreferences prefs = getPrefs();
+        Storage storage = getStorage();
+        if (forConfigObject instanceof UserProfile && !prefs.getConfigurationMessageSynced()) {
+            prefs.setConfigurationMessageSynced(true);
         }
         storage.notifyConfigUpdates(forConfigObject);
     }
 
     @Override
     public void onCreate() {
-        DatabaseModule.init(this);
         MessagingModuleConfiguration.configure(this);
+        DatabaseModule.init(this);
         super.onCreate();
-        messagingModuleConfiguration = new MessagingModuleConfiguration(this,
-                storage,
-                messageDataProvider,
-                ()-> KeyPairUtilities.INSTANCE.getUserED25519KeyPair(this),
-                configFactory
-                );
-        callMessageProcessor = new CallMessageProcessor(this, textSecurePreferences, ProcessLifecycleOwner.get().getLifecycle(), storage);
         Log.i(TAG, "onCreate()");
         startKovenant();
         initializeSecurityProvider();
@@ -234,7 +227,6 @@ public class ApplicationContext extends Application implements DefaultLifecycleO
         initializeTypingStatusRepository();
         initializeTypingStatusSender();
         initializeReadReceiptManager();
-        initializeProfileManager();
         initializePeriodicTasks();
         SSKEnvironment.Companion.configure(getTypingStatusRepository(), getReadReceiptManager(), getProfileManager(), messageNotifier, getExpiringMessageManager());
         initializeWebRtc();
@@ -310,7 +302,7 @@ public class ApplicationContext extends Application implements DefaultLifecycleO
     }
 
     public ProfileManager getProfileManager() {
-        return profileManager;
+        return getDatabaseComponent().getProfileManager();
     }
 
     public boolean isAppVisible() {
@@ -365,10 +357,6 @@ public class ApplicationContext extends Application implements DefaultLifecycleO
 
     private void initializeReadReceiptManager() {
         this.readReceiptManager = new ReadReceiptManager();
-    }
-
-    private void initializeProfileManager() {
-        this.profileManager = new ProfileManager(this, configFactory);
     }
 
     private void initializeTypingStatusSender() {
@@ -461,7 +449,8 @@ public class ApplicationContext extends Application implements DefaultLifecycleO
             poller.setUserPublicKey(userPublicKey);
             return;
         }
-        poller = new Poller(configFactory, new Timer());
+        poller = new Poller(getConfigFactory(), new Timer());
+        getDatabaseComponent().getCallMessageProcessor().init();
     }
 
     public void startPollingIfNeeded() {
@@ -542,7 +531,7 @@ public class ApplicationContext extends Application implements DefaultLifecycleO
         if (!deleteDatabase(SQLCipherOpenHelper.DATABASE_NAME)) {
             Log.d("Loki", "Failed to delete database.");
         }
-        configFactory.keyPairChanged();
+        getDatabaseComponent().getConfigFactory().keyPairChanged();
         Util.runOnMain(() -> new Handler().postDelayed(ApplicationContext.this::restartApplication, 200));
     }
 

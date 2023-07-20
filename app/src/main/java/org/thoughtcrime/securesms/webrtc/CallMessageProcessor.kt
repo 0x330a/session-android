@@ -29,7 +29,7 @@ import org.thoughtcrime.securesms.util.CallNotificationBuilder
 import org.webrtc.IceCandidate
 
 
-class CallMessageProcessor(private val context: Context, private val textSecurePreferences: TextSecurePreferences, lifecycle: Lifecycle, private val storage: StorageProtocol) {
+class CallMessageProcessor(private val context: Context, private val textSecurePreferences: TextSecurePreferences, private val lifecycle: Lifecycle, private val storage: StorageProtocol) {
 
     companion object {
         private const val VERY_EXPIRED_TIME = 15 * 60 * 1000L
@@ -49,7 +49,7 @@ class CallMessageProcessor(private val context: Context, private val textSecureP
         }
     }
 
-    init {
+    fun init() {
         lifecycle.coroutineScope.launch(IO) {
             while (isActive) {
                 val nextMessage = WebRtcUtils.SIGNAL_QUEUE.receive()

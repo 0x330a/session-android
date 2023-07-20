@@ -1,18 +1,24 @@
 package org.thoughtcrime.securesms.dependencies
 
 import android.content.Context
+import androidx.lifecycle.ProcessLifecycleOwner
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import org.session.libsession.database.MessageDataProvider
+import org.session.libsession.messaging.MessagingModuleConfiguration
+import org.session.libsession.utilities.TextSecurePreferences
 import org.thoughtcrime.securesms.attachments.DatabaseAttachmentProvider
 import org.thoughtcrime.securesms.crypto.AttachmentSecret
 import org.thoughtcrime.securesms.crypto.AttachmentSecretProvider
 import org.thoughtcrime.securesms.crypto.DatabaseSecretProvider
+import org.thoughtcrime.securesms.crypto.KeyPairUtilities
 import org.thoughtcrime.securesms.database.*
 import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper
+import org.thoughtcrime.securesms.sskenvironment.ProfileManager
+import org.thoughtcrime.securesms.webrtc.CallMessageProcessor
 import javax.inject.Singleton
 
 @Module
@@ -144,5 +150,32 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideConfigDatabase(@ApplicationContext context: Context, openHelper: SQLCipherOpenHelper): ConfigDatabase = ConfigDatabase(context, openHelper)
+
+    @Provides
+    @Singleton
+    fun profileManager(@ApplicationContext context: Context, configFactory: ConfigFactory) = ProfileManager(context, configFactory)
+
+    @Provides
+    @Singleton
+    fun messagingModuleConfiguration(
+        @ApplicationContext context: Context,
+        storage: Storage,
+        messageDataProvider: MessageDataProvider,
+        configFactory: ConfigFactory
+    ) = MessagingModuleConfiguration(
+        context,
+        storage,
+        messageDataProvider,
+        { KeyPairUtilities.getUserED25519KeyPair(context) },
+        configFactory
+    )
+
+    @Provides
+    @Singleton
+    fun callMessageProcessor(
+        @ApplicationContext context: Context,
+        prefs: TextSecurePreferences,
+        storage: Storage,
+    ) = CallMessageProcessor(context, prefs, ProcessLifecycleOwner.get().lifecycle, storage)
 
 }

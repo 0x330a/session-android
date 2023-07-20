@@ -5,9 +5,12 @@ import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import org.session.libsession.database.MessageDataProvider
+import org.session.libsession.messaging.MessagingModuleConfiguration
 import org.thoughtcrime.securesms.ApplicationContext
 import org.thoughtcrime.securesms.database.*
 import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper
+import org.thoughtcrime.securesms.sskenvironment.ProfileManager
+import org.thoughtcrime.securesms.webrtc.CallMessageProcessor
 
 @EntryPoint
 @InstallIn(SingletonComponent::class)
@@ -46,4 +49,9 @@ interface DatabaseComponent {
     fun blindedIdMappingDatabase(): BlindedIdMappingDatabase
     fun groupMemberDatabase(): GroupMemberDatabase
     fun configDatabase(): ConfigDatabase
+    fun configFactory(): ConfigFactory
+    fun getProfileManager(): ProfileManager
+    fun getConfigFactory(): ConfigFactory
+    fun getCallMessageProcessor(): CallMessageProcessor
+    fun messagingModuleConfiguration(): MessagingModuleConfiguration
 }

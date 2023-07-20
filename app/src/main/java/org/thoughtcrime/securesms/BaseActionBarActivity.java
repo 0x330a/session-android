@@ -32,7 +32,7 @@ public abstract class BaseActionBarActivity extends AppCompatActivity {
 
   private TextSecurePreferences getPreferences() {
     ApplicationContext appContext = (ApplicationContext) getApplicationContext();
-    return appContext.textSecurePreferences;
+    return appContext.getPrefs();
   }
 
   @StyleRes
