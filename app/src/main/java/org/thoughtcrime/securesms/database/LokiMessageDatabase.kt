@@ -3,10 +3,15 @@ package org.thoughtcrime.securesms.database
 import android.content.ContentValues
 import android.content.Context
 import net.zetetic.database.sqlcipher.SQLiteDatabase.CONFLICT_REPLACE
+import org.session.libsession.utilities.WindowDebouncer
 import org.session.libsignal.database.LokiMessageDatabaseProtocol
 import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper
 
-class LokiMessageDatabase(context: Context, helper: SQLCipherOpenHelper) : Database(context, helper), LokiMessageDatabaseProtocol {
+class LokiMessageDatabase(context: Context, helper: SQLCipherOpenHelper, debouncer: WindowDebouncer) : Database(
+    context,
+    helper,
+    debouncer,
+), LokiMessageDatabaseProtocol {
 
     companion object {
         private val messageIDTable = "loki_message_friend_request_database"

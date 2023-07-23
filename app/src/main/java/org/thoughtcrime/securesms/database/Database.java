@@ -26,7 +26,6 @@ import androidx.annotation.NonNull;
 import net.zetetic.database.sqlcipher.SQLiteDatabase;
 
 import org.session.libsession.utilities.WindowDebouncer;
-import org.thoughtcrime.securesms.ApplicationContext;
 import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper;
 
 import java.util.Set;
@@ -42,13 +41,13 @@ public abstract class Database {
   private   final Runnable            conversationListUpdater;
 
   @SuppressLint("WrongConstant")
-  public Database(Context context, SQLCipherOpenHelper databaseHelper) {
+  public Database(Context context, SQLCipherOpenHelper databaseHelper, WindowDebouncer debouncer) {
     this.context = context;
     this.conversationListUpdater = () -> {
       context.getContentResolver().notifyChange(DatabaseContentProviders.ConversationList.CONTENT_URI, null);
     };
     this.databaseHelper = databaseHelper;
-    this.conversationListNotificationDebouncer = ApplicationContext.getInstance(context).getConversationListDebouncer();
+    this.conversationListNotificationDebouncer = debouncer;
   }
 
   protected void notifyConversationListeners(Set<Long> threadIds) {

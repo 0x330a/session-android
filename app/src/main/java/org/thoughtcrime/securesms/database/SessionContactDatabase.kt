@@ -6,11 +6,16 @@ import android.database.Cursor
 import androidx.core.database.getStringOrNull
 import org.session.libsession.messaging.contacts.Contact
 import org.session.libsession.messaging.utilities.SessionId
+import org.session.libsession.utilities.WindowDebouncer
 import org.session.libsignal.utilities.Base64
 import org.session.libsignal.utilities.IdPrefix
 import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper
 
-class SessionContactDatabase(context: Context, helper: SQLCipherOpenHelper) : Database(context, helper) {
+class SessionContactDatabase(context: Context, helper: SQLCipherOpenHelper, debouncer: WindowDebouncer) : Database(
+    context,
+    helper,
+    debouncer,
+) {
 
     companion object {
         private const val sessionContactTable = "session_contact_database"

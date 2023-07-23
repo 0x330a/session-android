@@ -43,6 +43,7 @@ import org.session.libsession.utilities.DistributionTypes;
 import org.session.libsession.utilities.GroupRecord;
 import org.session.libsession.utilities.TextSecurePreferences;
 import org.session.libsession.utilities.Util;
+import org.session.libsession.utilities.WindowDebouncer;
 import org.session.libsession.utilities.recipients.Recipient;
 import org.session.libsession.utilities.recipients.Recipient.RecipientSettings;
 import org.session.libsignal.utilities.IdPrefix;
@@ -147,8 +148,8 @@ public class ThreadDatabase extends Database {
 
   private ConversationThreadUpdateListener updateListener;
 
-  public ThreadDatabase(Context context, SQLCipherOpenHelper databaseHelper) {
-    super(context, databaseHelper);
+  public ThreadDatabase(Context context, SQLCipherOpenHelper databaseHelper, WindowDebouncer debouncer) {
+    super(context, databaseHelper, debouncer);
   }
 
   public void setUpdateListener(ConversationThreadUpdateListener updateListener) {

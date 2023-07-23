@@ -5,9 +5,14 @@ import android.content.Context
 import android.database.Cursor
 import org.session.libsession.messaging.open_groups.GroupMember
 import org.session.libsession.messaging.open_groups.GroupMemberRole
+import org.session.libsession.utilities.WindowDebouncer
 import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper
 
-class GroupMemberDatabase(context: Context, helper: SQLCipherOpenHelper) : Database(context, helper) {
+class GroupMemberDatabase(context: Context, helper: SQLCipherOpenHelper, debouncer: WindowDebouncer) : Database(
+    context,
+    helper,
+    debouncer,
+) {
 
     companion object {
         const val TABLE_NAME = "group_member"

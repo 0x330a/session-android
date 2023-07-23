@@ -4,17 +4,16 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.Cursor
 import android.net.Uri
+import org.session.libsession.utilities.WindowDebouncer
 import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper
-import java.lang.IllegalArgumentException
-import java.util.*
-import kotlin.collections.ArrayList
+import java.util.Date
 
 /**
  * Keeps track of the backup files saved by the app.
  * Uses [BackupFileRecord] as an entry data projection.
  */
-class LokiBackupFilesDatabase(context: Context, databaseHelper: SQLCipherOpenHelper)
-    : Database(context, databaseHelper) {
+class LokiBackupFilesDatabase(context: Context, databaseHelper: SQLCipherOpenHelper, debouncer: WindowDebouncer)
+    : Database(context, databaseHelper, debouncer) {
 
     companion object {
         public  const val TABLE_NAME = "backup_files"

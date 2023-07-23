@@ -16,6 +16,7 @@ import org.session.libsession.messaging.sending_receiving.attachments.SessionSer
 import org.session.libsession.utilities.Address
 import org.session.libsession.utilities.UploadResult
 import org.session.libsession.utilities.Util
+import org.session.libsession.utilities.WindowDebouncer
 import org.session.libsession.utilities.recipients.Recipient
 import org.session.libsignal.messages.SignalServiceAttachment
 import org.session.libsignal.messages.SignalServiceAttachmentPointer
@@ -35,7 +36,11 @@ import org.thoughtcrime.securesms.util.MediaUtil
 import java.io.IOException
 import java.io.InputStream
 
-class DatabaseAttachmentProvider(context: Context, helper: SQLCipherOpenHelper) : Database(context, helper), MessageDataProvider {
+class DatabaseAttachmentProvider(context: Context, helper: SQLCipherOpenHelper, debouncer: WindowDebouncer) : Database(
+    context,
+    helper,
+    debouncer,
+), MessageDataProvider {
 
     override fun getAttachmentStream(attachmentId: Long): SessionServiceAttachmentStream? {
         val attachmentDatabase = DatabaseComponent.get(context).attachmentDatabase()

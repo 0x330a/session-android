@@ -22,7 +22,6 @@ interface DatabaseComponent {
     }
 
     fun openHelper(): SQLCipherOpenHelper
-
     fun smsDatabase(): SmsDatabase
     fun mmsDatabase(): MmsDatabase
     fun attachmentDatabase(): AttachmentDatabase

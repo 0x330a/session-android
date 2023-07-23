@@ -65,6 +65,7 @@ import org.session.libsession.utilities.GroupUtil
 import org.session.libsession.utilities.ProfileKeyUtil
 import org.session.libsession.utilities.SSKEnvironment
 import org.session.libsession.utilities.TextSecurePreferences
+import org.session.libsession.utilities.WindowDebouncer
 import org.session.libsession.utilities.recipients.Recipient
 import org.session.libsignal.crypto.ecc.DjbECPrivateKey
 import org.session.libsignal.crypto.ecc.DjbECPublicKey
@@ -91,7 +92,11 @@ import org.thoughtcrime.securesms.util.SessionMetaProtocol
 import java.security.MessageDigest
 import network.loki.messenger.libsession_util.util.Contact as LibSessionContact
 
-open class Storage(context: Context, helper: SQLCipherOpenHelper, private val configFactory: ConfigFactory) : Database(context, helper), StorageProtocol,
+open class Storage(context: Context, helper: SQLCipherOpenHelper, private val configFactory: ConfigFactory, debouncer: WindowDebouncer) : Database(
+    context,
+    helper,
+    debouncer,
+), StorageProtocol,
     ThreadDatabase.ConversationThreadUpdateListener {
 
     override fun threadCreated(address: Address, threadId: Long) {

@@ -45,6 +45,7 @@ import org.session.libsession.messaging.sending_receiving.attachments.DatabaseAt
 import org.session.libsession.messaging.sending_receiving.attachments.DatabaseAttachmentAudioExtras;
 import org.session.libsession.utilities.MediaTypes;
 import org.session.libsession.utilities.Util;
+import org.session.libsession.utilities.WindowDebouncer;
 import org.session.libsignal.utilities.ExternalStorageUtil;
 import org.session.libsignal.utilities.JsonUtil;
 import org.session.libsignal.utilities.Log;
@@ -159,8 +160,8 @@ public class AttachmentDatabase extends Database {
 
   private final AttachmentSecret attachmentSecret;
 
-  public AttachmentDatabase(Context context, SQLCipherOpenHelper databaseHelper, AttachmentSecret attachmentSecret) {
-    super(context, databaseHelper);
+  public AttachmentDatabase(Context context, SQLCipherOpenHelper databaseHelper, AttachmentSecret attachmentSecret, WindowDebouncer debouncer) {
+    super(context, databaseHelper, debouncer);
     this.attachmentSecret = attachmentSecret;
   }
 

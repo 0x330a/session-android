@@ -4,10 +4,11 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.Cursor
 import org.session.libsession.messaging.open_groups.OpenGroup
+import org.session.libsession.utilities.WindowDebouncer
 import org.session.libsignal.utilities.JsonUtil
 import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper
 
-class LokiThreadDatabase(context: Context, helper: SQLCipherOpenHelper) : Database(context, helper) {
+class LokiThreadDatabase(context: Context, helper: SQLCipherOpenHelper, debouncer: WindowDebouncer) : Database(context, helper, debouncer) {
 
     companion object {
         private val sessionResetTable = "loki_thread_session_reset_database"

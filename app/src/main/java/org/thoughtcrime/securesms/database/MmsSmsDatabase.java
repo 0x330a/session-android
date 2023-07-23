@@ -30,6 +30,7 @@ import net.zetetic.database.sqlcipher.SQLiteQueryBuilder;
 import org.jetbrains.annotations.NotNull;
 import org.session.libsession.utilities.Address;
 import org.session.libsession.utilities.Util;
+import org.session.libsession.utilities.WindowDebouncer;
 import org.thoughtcrime.securesms.database.MessagingDatabase.SyncMessageId;
 import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper;
 import org.thoughtcrime.securesms.database.model.MessageRecord;
@@ -84,8 +85,8 @@ public class MmsSmsDatabase extends Database {
                                               MmsSmsColumns.HAS_MENTION
   };
 
-  public MmsSmsDatabase(Context context, SQLCipherOpenHelper databaseHelper) {
-    super(context, databaseHelper);
+  public MmsSmsDatabase(Context context, SQLCipherOpenHelper databaseHelper, WindowDebouncer debouncer) {
+    super(context, databaseHelper, debouncer);
   }
 
   public @Nullable MessageRecord getMessageForTimestamp(long timestamp) {

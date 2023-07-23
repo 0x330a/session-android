@@ -180,13 +180,6 @@ public class ApplicationContext extends Application implements DefaultLifecycleO
         return conversationListHandler;
     }
 
-    public WindowDebouncer getConversationListDebouncer() {
-        if (conversationListDebouncer == null) {
-            conversationListDebouncer = new WindowDebouncer(1000, new Timer());
-        }
-        return conversationListDebouncer;
-    }
-
     public PersistentLogger getPersistentLogger() {
         return this.persistentLogger;
     }
@@ -205,7 +198,7 @@ public class ApplicationContext extends Application implements DefaultLifecycleO
     @Override
     public void onCreate() {
         MessagingModuleConfiguration.configure(this);
-        DatabaseModule.init(this);
+        DatabaseModule.init();
         super.onCreate();
         Log.i(TAG, "onCreate()");
         startKovenant();

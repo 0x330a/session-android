@@ -4,16 +4,19 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
+
 import androidx.annotation.Nullable;
 
 import net.zetetic.database.sqlcipher.SQLiteDatabase;
 
-import network.loki.messenger.R;
+import org.session.libsession.utilities.WindowDebouncer;
 import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper;
 
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+
+import network.loki.messenger.R;
 
 public class DraftDatabase extends Database {
 
@@ -30,8 +33,8 @@ public class DraftDatabase extends Database {
     "CREATE INDEX IF NOT EXISTS draft_thread_index ON " + TABLE_NAME + " (" + THREAD_ID + ");",
   };
 
-  public DraftDatabase(Context context, SQLCipherOpenHelper databaseHelper) {
-    super(context, databaseHelper);
+  public DraftDatabase(Context context, SQLCipherOpenHelper databaseHelper, WindowDebouncer debouncer) {
+    super(context, databaseHelper, debouncer);
   }
 
   public void insertDrafts(long threadId, List<Draft> drafts) {

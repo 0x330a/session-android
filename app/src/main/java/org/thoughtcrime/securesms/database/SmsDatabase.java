@@ -42,6 +42,7 @@ import org.session.libsession.utilities.IdentityKeyMismatch;
 import org.session.libsession.utilities.IdentityKeyMismatchList;
 import org.session.libsession.utilities.TextSecurePreferences;
 import org.session.libsession.utilities.Util;
+import org.session.libsession.utilities.WindowDebouncer;
 import org.session.libsession.utilities.recipients.Recipient;
 import org.session.libsignal.utilities.JsonUtil;
 import org.session.libsignal.utilities.Log;
@@ -130,8 +131,8 @@ public class SmsDatabase extends MessagingDatabase {
   private static final EarlyReceiptCache earlyDeliveryReceiptCache = new EarlyReceiptCache();
   private static final EarlyReceiptCache earlyReadReceiptCache     = new EarlyReceiptCache();
 
-  public SmsDatabase(Context context, SQLCipherOpenHelper databaseHelper) {
-    super(context, databaseHelper);
+  public SmsDatabase(Context context, SQLCipherOpenHelper databaseHelper, WindowDebouncer debouncer) {
+    super(context, databaseHelper, debouncer);
   }
 
   protected String getTableName() {

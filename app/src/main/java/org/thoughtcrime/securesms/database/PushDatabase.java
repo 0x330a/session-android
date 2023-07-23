@@ -3,16 +3,18 @@ package org.thoughtcrime.securesms.database;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+
 import androidx.annotation.NonNull;
-import org.session.libsignal.utilities.Log;
 
 import net.zetetic.database.sqlcipher.SQLiteDatabase;
 
-import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper;
-import org.session.libsignal.utilities.Base64;
-import org.session.libsignal.utilities.guava.Optional;
+import org.session.libsession.utilities.WindowDebouncer;
 import org.session.libsignal.messages.SignalServiceEnvelope;
+import org.session.libsignal.utilities.Base64;
+import org.session.libsignal.utilities.Log;
 import org.session.libsignal.utilities.Util;
+import org.session.libsignal.utilities.guava.Optional;
+import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper;
 
 import java.io.IOException;
 
@@ -35,8 +37,8 @@ public class PushDatabase extends Database {
       TYPE + " INTEGER, " + SOURCE + " TEXT, " + DEVICE_ID + " INTEGER, " + LEGACY_MSG + " TEXT, " + CONTENT + " TEXT, " + TIMESTAMP + " INTEGER, " +
       SERVER_TIMESTAMP + " INTEGER DEFAULT 0, " + SERVER_GUID + " TEXT DEFAULT NULL);";
 
-  public PushDatabase(Context context, SQLCipherOpenHelper databaseHelper) {
-    super(context, databaseHelper);
+  public PushDatabase(Context context, SQLCipherOpenHelper databaseHelper, WindowDebouncer debouncer) {
+    super(context, databaseHelper, debouncer);
   }
 
   public long insert(@NonNull SignalServiceEnvelope envelope) {

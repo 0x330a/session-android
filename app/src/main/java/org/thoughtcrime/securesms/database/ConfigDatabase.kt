@@ -4,9 +4,11 @@ import android.content.Context
 import androidx.core.content.contentValuesOf
 import androidx.core.database.getBlobOrNull
 import androidx.core.database.getLongOrNull
+import org.session.libsession.utilities.WindowDebouncer
 import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper
 
-class ConfigDatabase(context: Context, helper: SQLCipherOpenHelper): Database(context, helper) {
+class ConfigDatabase(context: Context, helper: SQLCipherOpenHelper, debouncer: WindowDebouncer):
+    Database(context, helper, debouncer) {
 
     companion object {
         private const val VARIANT = "variant"

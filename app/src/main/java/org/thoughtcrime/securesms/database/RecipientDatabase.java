@@ -16,6 +16,7 @@ import net.zetetic.database.sqlcipher.SQLiteDatabase;
 import org.session.libsession.utilities.Address;
 import org.session.libsession.utilities.MaterialColor;
 import org.session.libsession.utilities.Util;
+import org.session.libsession.utilities.WindowDebouncer;
 import org.session.libsession.utilities.recipients.Recipient;
 import org.session.libsession.utilities.recipients.Recipient.RecipientSettings;
 import org.session.libsession.utilities.recipients.Recipient.RegisteredState;
@@ -146,8 +147,8 @@ public class RecipientDatabase extends Database {
   public static final int NOTIFY_TYPE_MENTIONS = 1;
   public static final int NOTIFY_TYPE_NONE = 2;
 
-  public RecipientDatabase(Context context, SQLCipherOpenHelper databaseHelper) {
-    super(context, databaseHelper);
+  public RecipientDatabase(Context context, SQLCipherOpenHelper databaseHelper, WindowDebouncer debouncer) {
+    super(context, databaseHelper, debouncer);
   }
 
   public RecipientReader getRecipientsWithNotificationChannels() {

@@ -5,9 +5,14 @@ import android.content.Context
 import android.database.Cursor
 import androidx.core.database.getStringOrNull
 import org.session.libsession.messaging.BlindedIdMapping
+import org.session.libsession.utilities.WindowDebouncer
 import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper
 
-class BlindedIdMappingDatabase(context: Context, helper: SQLCipherOpenHelper) : Database(context, helper) {
+class BlindedIdMappingDatabase(context: Context, helper: SQLCipherOpenHelper, debouncer: WindowDebouncer) : Database(
+    context,
+    helper,
+    debouncer,
+) {
 
     companion object {
         const val TABLE_NAME = "blinded_id_mapping"

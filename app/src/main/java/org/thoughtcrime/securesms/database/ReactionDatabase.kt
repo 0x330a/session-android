@@ -5,6 +5,7 @@ import android.content.Context
 import android.database.Cursor
 import org.json.JSONArray
 import org.json.JSONException
+import org.session.libsession.utilities.WindowDebouncer
 import org.session.libsignal.utilities.JsonUtil.SaneJSONObject
 import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper
 import org.thoughtcrime.securesms.database.model.MessageId
@@ -15,7 +16,7 @@ import org.thoughtcrime.securesms.util.CursorUtil
 /**
  * Store reactions on messages.
  */
-class ReactionDatabase(context: Context, helper: SQLCipherOpenHelper) : Database(context, helper) {
+class ReactionDatabase(context: Context, helper: SQLCipherOpenHelper, debouncer: WindowDebouncer) : Database(context, helper, debouncer) {
 
   companion object {
     const val TABLE_NAME = "reaction"

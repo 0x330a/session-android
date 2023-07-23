@@ -23,14 +23,16 @@ object SessionUtilModule {
 
     @Provides
     @Singleton
-    fun provideConfigFactory(@ApplicationContext context: Context, configDatabase: ConfigDatabase): ConfigFactory =
+    fun provideConfigFactory(@ApplicationContext context: Context,
+                             configDatabase: ConfigDatabase,
+                             configFactoryUpdateListener: ConfigFactoryUpdateListener): ConfigFactory =
         ConfigFactory(context, configDatabase) {
             val localUserPublicKey = TextSecurePreferences.getLocalNumber(context)
             val secretKey = maybeUserEdSecretKey(context)
             if (localUserPublicKey == null || secretKey == null) null
             else secretKey to localUserPublicKey
         }.apply {
-            registerListener(context as ConfigFactoryUpdateListener)
+            registerListener(configFactoryUpdateListener)
         }
 
 }

@@ -9,14 +9,17 @@ import org.session.libsession.utilities.AppTextSecurePreferences
 import org.session.libsession.utilities.TextSecurePreferences
 import org.thoughtcrime.securesms.repository.ConversationRepository
 import org.thoughtcrime.securesms.repository.DefaultConversationRepository
+import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class AppModule {
 
+    @Singleton
     @Binds
     abstract fun bindTextSecurePreferences(preferences: AppTextSecurePreferences): TextSecurePreferences
 
+    @Singleton
     @Binds
     abstract fun bindConversationRepository(repository: DefaultConversationRepository): ConversationRepository
 

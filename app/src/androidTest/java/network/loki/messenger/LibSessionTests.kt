@@ -3,30 +3,41 @@ package network.loki.messenger
 import androidx.core.content.edit
 import androidx.preference.PreferenceManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.filters.SmallTest
 import androidx.test.platform.app.InstrumentationRegistry
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
 import network.loki.messenger.libsession_util.ConfigBase
 import network.loki.messenger.libsession_util.Contacts
 import network.loki.messenger.libsession_util.util.Contact
 import network.loki.messenger.libsession_util.util.ExpiryMode
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.kotlin.argThat
 import org.mockito.kotlin.eq
-import org.mockito.kotlin.spy
 import org.mockito.kotlin.verify
 import org.session.libsession.messaging.MessagingModuleConfiguration
 import org.session.libsession.utilities.TextSecurePreferences
 import org.session.libsignal.utilities.KeyHelper
 import org.session.libsignal.utilities.hexEncodedPublicKey
-import org.thoughtcrime.securesms.ApplicationContext
 import org.thoughtcrime.securesms.crypto.KeyPairUtilities
+import org.thoughtcrime.securesms.database.Storage
+import javax.inject.Inject
 import kotlin.random.Random
 
 @RunWith(AndroidJUnit4::class)
-@SmallTest
+@HiltAndroidTest
 class LibSessionTests {
+
+    @get:Rule
+    var hiltRule = HiltAndroidRule(this)
+
+    @Inject
+    lateinit var prefs: TextSecurePreferences
+
+    @Inject
+    lateinit var storage: Storage
 
     private fun randomSeedBytes() = (0 until 16).map { Random.nextInt(UByte.MAX_VALUE.toInt()).toByte() }
     private fun randomKeyPair() = KeyPairUtilities.generate(randomSeedBytes().toByteArray())
@@ -37,8 +48,7 @@ class LibSessionTests {
         get() = "fakehash${fakeHashI++}"
 
     private fun maybeGetUserInfo(): Pair<ByteArray, String>? {
-        val appContext = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as ApplicationContext
-        val prefs = appContext.prefs
+        val appContext = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext
         val localUserPublicKey = prefs.getLocalNumber()
         val secretKey = with(appContext) {
             val edKey = KeyPairUtilities.getUserED25519KeyPair(this) ?: return null
@@ -64,6 +74,7 @@ class LibSessionTests {
 
     @Before
     fun setupUser() {
+        hiltRule.inject()
         PreferenceManager.getDefaultSharedPreferences(InstrumentationRegistry.getInstrumentation().targetContext.applicationContext).edit {
             putBoolean(TextSecurePreferences.HAS_FORCED_NEW_CONFIG, true).apply()
         }
@@ -80,9 +91,6 @@ class LibSessionTests {
 
     @Test
     fun migration_one_to_ones() {
-        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as ApplicationContext
-        val storageSpy = spy(app.storage)
-        app.storage = storageSpy
 
         val newContactId = randomSessionId()
         val singleContact = Contact(
@@ -93,10 +101,10 @@ class LibSessionTests {
         val newContactMerge = buildContactMessage(listOf(singleContact))
         val contacts = MessagingModuleConfiguration.shared.configFactory.contacts!!
         fakePollNewConfig(contacts, newContactMerge)
-        verify(storageSpy).addLibSessionContacts(argThat {
+        verify(storage).addLibSessionContacts(argThat {
             first().let { it.id == newContactId && it.approved } && size == 1
         })
-        verify(storageSpy).setRecipientApproved(argThat { address.serialize() == newContactId }, eq(true))
+        verify(storage).setRecipientApproved(argThat { address.serialize() == newContactId }, eq(true))
     }
 
 }

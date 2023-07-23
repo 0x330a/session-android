@@ -3,6 +3,7 @@ package org.thoughtcrime.securesms.database
 import android.content.ContentValues
 import android.content.Context
 import org.session.libsession.utilities.TextSecurePreferences
+import org.session.libsession.utilities.WindowDebouncer
 import org.session.libsignal.crypto.ecc.DjbECPrivateKey
 import org.session.libsignal.crypto.ecc.DjbECPublicKey
 import org.session.libsignal.crypto.ecc.ECKeyPair
@@ -18,7 +19,8 @@ import org.thoughtcrime.securesms.crypto.IdentityKeyUtil
 import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper
 import java.util.Date
 
-class LokiAPIDatabase(context: Context, helper: SQLCipherOpenHelper) : Database(context, helper), LokiAPIDatabaseProtocol {
+class LokiAPIDatabase(context: Context, helper: SQLCipherOpenHelper, debouncer: WindowDebouncer) :
+    Database(context, helper, debouncer), LokiAPIDatabaseProtocol {
 
     companion object {
         // Shared

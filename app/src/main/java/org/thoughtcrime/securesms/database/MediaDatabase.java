@@ -11,6 +11,7 @@ import net.zetetic.database.sqlcipher.SQLiteDatabase;
 
 import org.session.libsession.messaging.sending_receiving.attachments.DatabaseAttachment;
 import org.session.libsession.utilities.Address;
+import org.session.libsession.utilities.WindowDebouncer;
 import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper;
 import org.thoughtcrime.securesms.dependencies.DatabaseComponent;
 
@@ -61,8 +62,8 @@ public class MediaDatabase extends Database {
                                                                                      AttachmentDatabase.CONTENT_TYPE + " NOT LIKE 'audio/%' AND " +
                                                                                      AttachmentDatabase.CONTENT_TYPE + " NOT LIKE 'text/x-signal-plain'");
 
-  public MediaDatabase(Context context, SQLCipherOpenHelper databaseHelper) {
-    super(context, databaseHelper);
+  public MediaDatabase(Context context, SQLCipherOpenHelper databaseHelper, WindowDebouncer debouncer) {
+    super(context, databaseHelper, debouncer);
   }
 
   public Cursor getGalleryMediaForThread(long threadId) {

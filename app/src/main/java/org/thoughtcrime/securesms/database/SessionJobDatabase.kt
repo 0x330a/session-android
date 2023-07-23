@@ -12,11 +12,13 @@ import org.session.libsession.messaging.jobs.MessageSendJob
 import org.session.libsession.messaging.jobs.SessionJobInstantiator
 import org.session.libsession.messaging.jobs.SessionJobManagerFactories
 import org.session.libsession.messaging.utilities.Data
+import org.session.libsession.utilities.WindowDebouncer
 import org.session.libsignal.utilities.Log
 import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper
 import org.thoughtcrime.securesms.jobmanager.impl.JsonDataSerializer
 
-class SessionJobDatabase(context: Context, helper: SQLCipherOpenHelper) : Database(context, helper) {
+class SessionJobDatabase(context: Context, helper: SQLCipherOpenHelper, debouncer: WindowDebouncer) :
+    Database(context, helper, debouncer) {
 
     companion object {
         const val sessionJobTable = "session_job_database"

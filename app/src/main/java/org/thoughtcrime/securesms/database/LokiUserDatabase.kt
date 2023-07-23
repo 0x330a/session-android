@@ -1,10 +1,11 @@
 package org.thoughtcrime.securesms.database
 
 import android.content.Context
-import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper
 import org.session.libsession.utilities.TextSecurePreferences
+import org.session.libsession.utilities.WindowDebouncer
+import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper
 
-class LokiUserDatabase(context: Context, helper: SQLCipherOpenHelper) : Database(context, helper) {
+class LokiUserDatabase(context: Context, helper: SQLCipherOpenHelper, debouncer: WindowDebouncer) : Database(context, helper, debouncer) {
 
     companion object {
         // Shared

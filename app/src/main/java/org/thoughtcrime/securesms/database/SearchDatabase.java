@@ -10,6 +10,7 @@ import com.annimon.stream.Stream;
 import net.zetetic.database.sqlcipher.SQLiteDatabase;
 
 import org.session.libsession.utilities.Util;
+import org.session.libsession.utilities.WindowDebouncer;
 import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper;
 
 import java.util.List;
@@ -108,8 +109,8 @@ public class SearchDatabase extends Database {
         "ORDER BY " + MmsSmsColumns.NORMALIZED_DATE_SENT + " DESC " +
         "LIMIT 500";
 
-  public SearchDatabase(@NonNull Context context, @NonNull SQLCipherOpenHelper databaseHelper) {
-    super(context, databaseHelper);
+  public SearchDatabase(@NonNull Context context, @NonNull SQLCipherOpenHelper databaseHelper, WindowDebouncer debouncer) {
+    super(context, databaseHelper, debouncer);
   }
 
   public Cursor queryMessages(@NonNull String query) {

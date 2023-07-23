@@ -45,6 +45,7 @@ import org.session.libsession.utilities.NetworkFailure
 import org.session.libsession.utilities.NetworkFailureList
 import org.session.libsession.utilities.TextSecurePreferences.Companion.isReadReceiptsEnabled
 import org.session.libsession.utilities.Util.toIsoBytes
+import org.session.libsession.utilities.WindowDebouncer
 import org.session.libsession.utilities.recipients.Recipient
 import org.session.libsignal.utilities.JsonUtil
 import org.session.libsignal.utilities.Log
@@ -67,7 +68,8 @@ import java.io.IOException
 import java.security.SecureRandom
 import java.util.LinkedList
 
-class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper) : MessagingDatabase(context, databaseHelper) {
+class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper, debouncer: WindowDebouncer) :
+    MessagingDatabase(context, databaseHelper, debouncer) {
     private val earlyDeliveryReceiptCache = EarlyReceiptCache()
     private val earlyReadReceiptCache = EarlyReceiptCache()
     override fun getTableName() = TABLE_NAME

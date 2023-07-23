@@ -18,6 +18,7 @@ import org.session.libsession.utilities.Address;
 import org.session.libsession.utilities.GroupRecord;
 import org.session.libsession.utilities.TextSecurePreferences;
 import org.session.libsession.utilities.Util;
+import org.session.libsession.utilities.WindowDebouncer;
 import org.session.libsession.utilities.recipients.Recipient;
 import org.session.libsignal.database.LokiOpenGroupDatabaseProtocol;
 import org.session.libsignal.messages.SignalServiceAttachmentPointer;
@@ -92,8 +93,8 @@ public class GroupDatabase extends Database implements LokiOpenGroupDatabaseProt
             "ADD COLUMN " + UPDATED + " INTEGER DEFAULT 0;";
   }
 
-  public GroupDatabase(Context context, SQLCipherOpenHelper databaseHelper) {
-    super(context, databaseHelper);
+  public GroupDatabase(Context context, SQLCipherOpenHelper databaseHelper, WindowDebouncer debouncer) {
+    super(context, databaseHelper, debouncer);
   }
 
   public Optional<GroupRecord> getGroup(String groupId) {

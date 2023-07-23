@@ -11,6 +11,7 @@ import org.session.libsession.utilities.Address;
 import org.session.libsession.utilities.Document;
 import org.session.libsession.utilities.IdentityKeyMismatch;
 import org.session.libsession.utilities.IdentityKeyMismatchList;
+import org.session.libsession.utilities.WindowDebouncer;
 import org.session.libsignal.crypto.IdentityKey;
 import org.session.libsignal.utilities.JsonUtil;
 import org.session.libsignal.utilities.Log;
@@ -27,8 +28,8 @@ public abstract class MessagingDatabase extends Database implements MmsSmsColumn
 
   private static final String TAG = MessagingDatabase.class.getSimpleName();
 
-  public MessagingDatabase(Context context, SQLCipherOpenHelper databaseHelper) {
-    super(context, databaseHelper);
+  public MessagingDatabase(Context context, SQLCipherOpenHelper databaseHelper, WindowDebouncer debouncer) {
+    super(context, databaseHelper, debouncer);
   }
 
   protected abstract String getTableName();

@@ -10,6 +10,7 @@ import dagger.hilt.components.SingletonComponent
 import org.session.libsession.database.MessageDataProvider
 import org.session.libsession.messaging.MessagingModuleConfiguration
 import org.session.libsession.utilities.TextSecurePreferences
+import org.session.libsession.utilities.WindowDebouncer
 import org.thoughtcrime.securesms.attachments.DatabaseAttachmentProvider
 import org.thoughtcrime.securesms.crypto.AttachmentSecret
 import org.thoughtcrime.securesms.crypto.AttachmentSecretProvider
@@ -19,6 +20,7 @@ import org.thoughtcrime.securesms.database.*
 import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper
 import org.thoughtcrime.securesms.sskenvironment.ProfileManager
 import org.thoughtcrime.securesms.webrtc.CallMessageProcessor
+import java.util.Timer
 import javax.inject.Singleton
 
 @Module
@@ -26,13 +28,19 @@ import javax.inject.Singleton
 object DatabaseModule {
 
     @JvmStatic
-    fun init(context: Context) {
+    fun init() {
         System.loadLibrary("sqlcipher")
     }
 
     @Provides
     @Singleton
-    fun provideAttachmentSecret(@ApplicationContext context: Context) = AttachmentSecretProvider.getInstance(context).orCreateAttachmentSecret
+    fun provideWindowDebouncer(@ApplicationContext context: Context) =
+        WindowDebouncer(1000, Timer())
+
+    @Provides
+    @Singleton
+    fun provideAttachmentSecret(@ApplicationContext context: Context) =
+        AttachmentSecretProvider.getInstance(context).orCreateAttachmentSecret
 
     @Provides
     @Singleton
@@ -44,116 +52,209 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideSmsDatabase(@ApplicationContext context: Context, openHelper: SQLCipherOpenHelper) = SmsDatabase(context, openHelper)
+    fun provideSmsDatabase(
+        @ApplicationContext context: Context,
+        openHelper: SQLCipherOpenHelper,
+        debouncer: WindowDebouncer
+    ) = SmsDatabase(context, openHelper, debouncer)
 
     @Provides
     @Singleton
-    fun provideMmsDatabase(@ApplicationContext context: Context, openHelper: SQLCipherOpenHelper) = MmsDatabase(context, openHelper)
+    fun provideMmsDatabase(
+        @ApplicationContext context: Context,
+        openHelper: SQLCipherOpenHelper,
+        debouncer: WindowDebouncer
+    ) = MmsDatabase(context, openHelper, debouncer)
 
     @Provides
     @Singleton
-    fun provideAttachmentDatabase(@ApplicationContext context: Context,
-                                  openHelper: SQLCipherOpenHelper,
-                                  attachmentSecret: AttachmentSecret) = AttachmentDatabase(context, openHelper, attachmentSecret)
-    @Provides
-    @Singleton
-    fun provideMediaDatbase(@ApplicationContext context: Context, openHelper: SQLCipherOpenHelper) = MediaDatabase(context, openHelper)
+    fun provideAttachmentDatabase(
+        @ApplicationContext context: Context,
+        openHelper: SQLCipherOpenHelper,
+        attachmentSecret: AttachmentSecret,
+        debouncer: WindowDebouncer
+    ) = AttachmentDatabase(context, openHelper, attachmentSecret, debouncer)
 
     @Provides
     @Singleton
-    fun provideThread(@ApplicationContext context: Context, openHelper: SQLCipherOpenHelper) = ThreadDatabase(context,openHelper)
+    fun provideMediaDatbase(
+        @ApplicationContext context: Context,
+        openHelper: SQLCipherOpenHelper,
+        debouncer: WindowDebouncer
+    ) = MediaDatabase(context, openHelper, debouncer)
 
     @Provides
     @Singleton
-    fun provideMmsSms(@ApplicationContext context: Context, openHelper: SQLCipherOpenHelper) = MmsSmsDatabase(context, openHelper)
+    fun provideThread(
+        @ApplicationContext context: Context,
+        openHelper: SQLCipherOpenHelper,
+        debouncer: WindowDebouncer
+    ) = ThreadDatabase(context, openHelper, debouncer)
 
     @Provides
     @Singleton
-    fun provideDraftDatabase(@ApplicationContext context: Context, openHelper: SQLCipherOpenHelper) = DraftDatabase(context, openHelper)
+    fun provideMmsSms(
+        @ApplicationContext context: Context,
+        openHelper: SQLCipherOpenHelper,
+        debouncer: WindowDebouncer
+    ) = MmsSmsDatabase(context, openHelper, debouncer)
 
     @Provides
     @Singleton
-    fun providePushDatabase(@ApplicationContext context: Context, openHelper: SQLCipherOpenHelper) = PushDatabase(context,openHelper)
+    fun provideDraftDatabase(
+        @ApplicationContext context: Context,
+        openHelper: SQLCipherOpenHelper,
+        debouncer: WindowDebouncer
+    ) = DraftDatabase(context, openHelper, debouncer)
 
     @Provides
     @Singleton
-    fun provideGroupDatabase(@ApplicationContext context: Context, openHelper: SQLCipherOpenHelper) = GroupDatabase(context,openHelper)
+    fun providePushDatabase(
+        @ApplicationContext context: Context,
+        openHelper: SQLCipherOpenHelper,
+        debouncer: WindowDebouncer
+    ) = PushDatabase(context, openHelper, debouncer)
 
     @Provides
     @Singleton
-    fun provideRecipientDatabase(@ApplicationContext context: Context, openHelper: SQLCipherOpenHelper) = RecipientDatabase(context,openHelper)
+    fun provideGroupDatabase(
+        @ApplicationContext context: Context,
+        openHelper: SQLCipherOpenHelper,
+        debouncer: WindowDebouncer
+    ) = GroupDatabase(context, openHelper, debouncer)
 
     @Provides
     @Singleton
-    fun provideGroupReceiptDatabase(@ApplicationContext context: Context, openHelper: SQLCipherOpenHelper) = GroupReceiptDatabase(context,openHelper)
+    fun provideRecipientDatabase(
+        @ApplicationContext context: Context,
+        openHelper: SQLCipherOpenHelper,
+        debouncer: WindowDebouncer
+    ) = RecipientDatabase(context, openHelper, debouncer)
 
     @Provides
     @Singleton
-    fun searchDatabase(@ApplicationContext context: Context, openHelper: SQLCipherOpenHelper) = SearchDatabase(context,openHelper)
+    fun provideGroupReceiptDatabase(
+        @ApplicationContext context: Context,
+        openHelper: SQLCipherOpenHelper,
+        debouncer: WindowDebouncer
+    ) = GroupReceiptDatabase(context, openHelper, debouncer)
 
     @Provides
     @Singleton
-    fun provideLokiApiDatabase(@ApplicationContext context: Context, openHelper: SQLCipherOpenHelper) = LokiAPIDatabase(context,openHelper)
+    fun searchDatabase(
+        @ApplicationContext context: Context,
+        openHelper: SQLCipherOpenHelper,
+        debouncer: WindowDebouncer
+    ) = SearchDatabase(context, openHelper, debouncer)
 
     @Provides
     @Singleton
-    fun provideLokiMessageDatabase(@ApplicationContext context: Context, openHelper: SQLCipherOpenHelper) = LokiMessageDatabase(context,openHelper)
+    fun provideLokiApiDatabase(
+        @ApplicationContext context: Context,
+        openHelper: SQLCipherOpenHelper,
+        debouncer: WindowDebouncer
+    ) = LokiAPIDatabase(context, openHelper, debouncer)
 
     @Provides
     @Singleton
-    fun provideLokiThreadDatabase(@ApplicationContext context: Context, openHelper: SQLCipherOpenHelper) = LokiThreadDatabase(context,openHelper)
+    fun provideLokiMessageDatabase(
+        @ApplicationContext context: Context,
+        openHelper: SQLCipherOpenHelper,
+        debouncer: WindowDebouncer
+    ) = LokiMessageDatabase(context, openHelper, debouncer)
 
     @Provides
     @Singleton
-    fun provideLokiUserDatabase(@ApplicationContext context: Context, openHelper: SQLCipherOpenHelper) = LokiUserDatabase(context,openHelper)
+    fun provideLokiThreadDatabase(
+        @ApplicationContext context: Context,
+        openHelper: SQLCipherOpenHelper,
+        debouncer: WindowDebouncer
+    ) = LokiThreadDatabase(context, openHelper, debouncer)
 
     @Provides
     @Singleton
-    fun provideLokiBackupFilesDatabase(@ApplicationContext context: Context, openHelper: SQLCipherOpenHelper) = LokiBackupFilesDatabase(context,openHelper)
+    fun provideLokiUserDatabase(
+        @ApplicationContext context: Context,
+        openHelper: SQLCipherOpenHelper,
+        debouncer: WindowDebouncer
+    ) = LokiUserDatabase(context, openHelper, debouncer)
 
     @Provides
     @Singleton
-    fun provideSessionJobDatabase(@ApplicationContext context: Context, openHelper: SQLCipherOpenHelper) = SessionJobDatabase(context, openHelper)
+    fun provideLokiBackupFilesDatabase(
+        @ApplicationContext context: Context,
+        openHelper: SQLCipherOpenHelper,
+        debouncer: WindowDebouncer
+    ) = LokiBackupFilesDatabase(context, openHelper, debouncer)
 
     @Provides
     @Singleton
-    fun provideSessionContactDatabase(@ApplicationContext context: Context, openHelper: SQLCipherOpenHelper) = SessionContactDatabase(context,openHelper)
+    fun provideSessionJobDatabase(
+        @ApplicationContext context: Context,
+        openHelper: SQLCipherOpenHelper,
+        debouncer: WindowDebouncer
+    ) = SessionJobDatabase(context, openHelper, debouncer)
 
     @Provides
     @Singleton
-    fun provideBlindedIdMappingDatabase(@ApplicationContext context: Context, openHelper: SQLCipherOpenHelper) = BlindedIdMappingDatabase(context, openHelper)
+    fun provideSessionContactDatabase(
+        @ApplicationContext context: Context,
+        openHelper: SQLCipherOpenHelper,
+        debouncer: WindowDebouncer
+    ) = SessionContactDatabase(context, openHelper, debouncer)
 
     @Provides
     @Singleton
-    fun provideGroupMemberDatabase(@ApplicationContext context: Context, openHelper: SQLCipherOpenHelper) = GroupMemberDatabase(context, openHelper)
+    fun provideBlindedIdMappingDatabase(
+        @ApplicationContext context: Context,
+        openHelper: SQLCipherOpenHelper,
+        debouncer: WindowDebouncer
+    ) = BlindedIdMappingDatabase(context, openHelper, debouncer)
 
     @Provides
     @Singleton
-    fun provideReactionDatabase(@ApplicationContext context: Context, openHelper: SQLCipherOpenHelper) = ReactionDatabase(context, openHelper)
+    fun provideGroupMemberDatabase(
+        @ApplicationContext context: Context,
+        openHelper: SQLCipherOpenHelper,
+        debouncer: WindowDebouncer
+    ) = GroupMemberDatabase(context, openHelper, debouncer)
 
     @Provides
     @Singleton
-    fun provideEmojiSearchDatabase(@ApplicationContext context: Context, openHelper: SQLCipherOpenHelper) = EmojiSearchDatabase(context, openHelper)
+    fun provideReactionDatabase(
+        @ApplicationContext context: Context,
+        openHelper: SQLCipherOpenHelper,
+        debouncer: WindowDebouncer
+    ) = ReactionDatabase(context, openHelper, debouncer)
 
     @Provides
     @Singleton
-    fun provideStorage(@ApplicationContext context: Context, openHelper: SQLCipherOpenHelper, configFactory: ConfigFactory, threadDatabase: ThreadDatabase): Storage {
-        val storage = Storage(context,openHelper, configFactory)
-        threadDatabase.setUpdateListener(storage)
-        return storage
-    }
+    fun provideEmojiSearchDatabase(
+        @ApplicationContext context: Context,
+        openHelper: SQLCipherOpenHelper,
+        debouncer: WindowDebouncer
+    ) = EmojiSearchDatabase(context, openHelper, debouncer)
 
     @Provides
     @Singleton
-    fun provideAttachmentProvider(@ApplicationContext context: Context, openHelper: SQLCipherOpenHelper): MessageDataProvider = DatabaseAttachmentProvider(context, openHelper)
+    fun provideAttachmentProvider(
+        @ApplicationContext context: Context,
+        openHelper: SQLCipherOpenHelper,
+        debouncer: WindowDebouncer
+    ): MessageDataProvider = DatabaseAttachmentProvider(context, openHelper, debouncer)
 
     @Provides
     @Singleton
-    fun provideConfigDatabase(@ApplicationContext context: Context, openHelper: SQLCipherOpenHelper): ConfigDatabase = ConfigDatabase(context, openHelper)
+    fun provideConfigDatabase(
+        @ApplicationContext context: Context,
+        openHelper: SQLCipherOpenHelper,
+        debouncer: WindowDebouncer
+    ): ConfigDatabase = ConfigDatabase(context, openHelper, debouncer)
 
     @Provides
     @Singleton
-    fun profileManager(@ApplicationContext context: Context, configFactory: ConfigFactory) = ProfileManager(context, configFactory)
+    fun profileManager(@ApplicationContext context: Context, configFactory: ConfigFactory) =
+        ProfileManager(context, configFactory)
 
     @Provides
     @Singleton

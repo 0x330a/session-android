@@ -10,6 +10,7 @@ import net.zetetic.database.sqlcipher.SQLiteDatabase;
 
 import org.apache.commons.lang3.StringUtils;
 import org.session.libsession.utilities.Address;
+import org.session.libsession.utilities.WindowDebouncer;
 import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper;
 
 import java.util.LinkedList;
@@ -38,8 +39,8 @@ public class GroupReceiptDatabase extends Database {
       "CREATE INDEX IF NOT EXISTS group_receipt_mms_id_index ON " + TABLE_NAME + " (" + MMS_ID + ");",
   };
 
-  public GroupReceiptDatabase(Context context, SQLCipherOpenHelper databaseHelper) {
-    super(context, databaseHelper);
+  public GroupReceiptDatabase(Context context, SQLCipherOpenHelper databaseHelper, WindowDebouncer debouncer) {
+    super(context, databaseHelper, debouncer);
   }
 
   public void insert(List<Address> addresses, long mmsId, int status, long timestamp) {
