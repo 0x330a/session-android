@@ -4,6 +4,7 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import org.thoughtcrime.securesms.database.MmsSmsDatabase
 import org.thoughtcrime.securesms.sskenvironment.ReadReceiptManager
 import javax.inject.Singleton
 
@@ -13,6 +14,6 @@ object ReadReceiptModule {
 
     @Provides
     @Singleton
-    fun provideReadReceipt() = ReadReceiptManager()
+    fun provideReadReceipt(mmsSmsDatabase: MmsSmsDatabase) = ReadReceiptManager(mmsSmsDatabase)
 
 }

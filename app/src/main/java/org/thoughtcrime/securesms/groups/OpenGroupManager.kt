@@ -9,6 +9,7 @@ import org.session.libsession.messaging.open_groups.OpenGroup
 import org.session.libsession.messaging.open_groups.OpenGroupApi
 import org.session.libsession.messaging.sending_receiving.pollers.OpenGroupPoller
 import org.session.libsignal.utilities.Log
+import org.thoughtcrime.securesms.database.LokiThreadDatabase
 import org.thoughtcrime.securesms.dependencies.DatabaseComponent
 import org.thoughtcrime.securesms.util.ConfigurationMessageUtilities
 import java.util.concurrent.Executors
@@ -138,7 +139,7 @@ object OpenGroupManager {
         lokiThreadDB.removeOpenGroupChat(threadID)
         storage.deleteConversation(threadID) // Must be invoked on a background thread
         GroupManager.deleteGroup(groupID, context) // Must be invoked on a background thread
-        ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(context)
+        ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(context, threadDB)
     }
 
     @WorkerThread
@@ -151,13 +152,14 @@ object OpenGroupManager {
         return add(server.toString().removeSuffix("/"), room, publicKey, context).second // assume migrated from calling function
     }
 
-    fun updateOpenGroup(openGroup: OpenGroup, context: Context) {
+    fun updateOpenGroup(openGroup: OpenGroup, context: Context, threadDb: LokiThreadDatabase) {
         val openGroupID = "${openGroup.server}.${openGroup.room}"
         val threadID = GroupManager.getOpenGroupThreadID(openGroupID, context)
-        threadDB.setOpenGroupChat(openGroup, threadID)
+        threadDb.setOpenGroupChat(openGroup, threadID)
     }
 
     fun isUserModerator(context: Context, groupId: String, standardPublicKey: String, blindedPublicKey: String? = null): Boolean {
+        val memberDatabase = DatabaseComponent.get(context).groupMemberDatabase()
         val standardRoles = memberDatabase.getGroupMemberRoles(groupId, standardPublicKey)
         val blindedRoles = blindedPublicKey?.let { memberDatabase.getGroupMemberRoles(groupId, it) } ?: emptyList()
 

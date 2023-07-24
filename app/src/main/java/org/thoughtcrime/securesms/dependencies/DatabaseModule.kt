@@ -297,7 +297,8 @@ object DatabaseModule {
         sessionContactDatabase: SessionContactDatabase,
         storage: Storage,
         recipientDatabase: RecipientDatabase,
-        sessionJobDatabase: SessionJobDatabase
+        sessionJobDatabase: SessionJobDatabase,
+        threadDatabase: ThreadDatabase
     ) =
         ProfileManager(
             context,
@@ -306,6 +307,7 @@ object DatabaseModule {
             storage,
             recipientDatabase,
             sessionJobDatabase,
+            threadDatabase
         )
 
     @Provides

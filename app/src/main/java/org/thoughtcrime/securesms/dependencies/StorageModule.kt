@@ -6,7 +6,9 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import org.session.libsession.messaging.sending_receiving.notifications.MessageNotifier
 import org.session.libsession.utilities.WindowDebouncer
+import org.thoughtcrime.securesms.database.LokiThreadDatabase
 import org.thoughtcrime.securesms.database.Storage
 import org.thoughtcrime.securesms.database.ThreadDatabase
 import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper
@@ -22,9 +24,17 @@ object StorageModule {
         openHelper: SQLCipherOpenHelper,
         configFactory: ConfigFactory,
         threadDatabase: ThreadDatabase,
-        debouncer: WindowDebouncer
+        lokiThreadDatabase: LokiThreadDatabase,
+        debouncer: WindowDebouncer,
+        notifier: MessageNotifier,
     ): Storage {
-        val storage = Storage(context, openHelper, configFactory, debouncer)
+        val storage = Storage(context,
+            openHelper,
+            configFactory,
+            threadDatabase,
+            lokiThreadDatabase,
+            debouncer,
+            notifier)
         threadDatabase.setUpdateListener(storage)
         return storage
     }

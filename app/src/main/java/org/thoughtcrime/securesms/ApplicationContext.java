@@ -60,6 +60,7 @@ import org.thoughtcrime.securesms.database.model.EmojiSearchData;
 import org.thoughtcrime.securesms.dependencies.AppComponent;
 import org.thoughtcrime.securesms.dependencies.ConfigFactory;
 import org.thoughtcrime.securesms.dependencies.DatabaseComponent;
+import org.thoughtcrime.securesms.dependencies.DatabaseComponentProvider;
 import org.thoughtcrime.securesms.dependencies.DatabaseModule;
 import org.thoughtcrime.securesms.emoji.EmojiSource;
 import org.thoughtcrime.securesms.groups.OpenGroupManager;
@@ -110,7 +111,8 @@ import network.loki.messenger.libsession_util.UserProfile;
  * @author Moxie Marlinspike
  */
 @HiltAndroidApp
-public class ApplicationContext extends Application implements DefaultLifecycleObserver, ConfigFactoryUpdateListener {
+public class ApplicationContext extends Application implements DefaultLifecycleObserver,
+        ConfigFactoryUpdateListener, DatabaseComponentProvider {
 
     public static final String PREFERENCES_NAME = "SecureSMS-Preferences";
 
@@ -143,6 +145,12 @@ public class ApplicationContext extends Application implements DefaultLifecycleO
 
     public ConfigFactory getConfigFactory() {
         return getDatabaseComponent().configFactory();
+    }
+
+    @NonNull
+    @Override
+    public DatabaseComponent databaseComponent() {
+        return getDatabaseComponent();
     }
 
     public DatabaseComponent getDatabaseComponent() {

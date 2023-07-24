@@ -96,6 +96,8 @@ import network.loki.messenger.libsession_util.util.Contact as LibSessionContact
 open class Storage(context: Context,
                    helper: SQLCipherOpenHelper,
                    private val configFactory: ConfigFactory,
+                   private val threadDb: ThreadDatabase,
+                   private val lokiThreadDb: LokiThreadDatabase,
                    debouncer: WindowDebouncer,
                    private val notifier: MessageNotifier) : Database(
     context,
@@ -171,7 +173,7 @@ open class Storage(context: Context,
                 userProfile.setNtsPriority(PRIORITY_HIDDEN)
             }
         }
-        ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(context)
+        ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(context, threadDb)
     }
 
     override fun getUserPublicKey(): String? {
@@ -275,7 +277,7 @@ open class Storage(context: Context,
                     notifyConversationListListeners()
                 }
                 config.set(convo)
-                ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(context)
+                ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(context, threadDb)
             }
         }
     }
@@ -501,7 +503,7 @@ open class Storage(context: Context,
 
         Recipient.removeCached(fromSerialized(userPublicKey))
         configFactory.user?.setPic(UserPic.DEFAULT)
-        ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(context)
+        ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(context, threadDb)
     }
 
     private fun updateConvoVolatile(convos: ConversationVolatileConfig) {
@@ -866,7 +868,7 @@ open class Storage(context: Context,
         )
         // shouldn't exist, don't use getOrConstruct + copy
         userGroups.set(groupInfo)
-        ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(context)
+        ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(context, threadDb)
     }
 
     override fun updateGroupConfig(groupPublicKey: String) {
@@ -1009,7 +1011,7 @@ open class Storage(context: Context,
                 }
             }
             if (configFactory.contacts?.needsPush() == true) {
-                ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(context)
+                ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(context, threadDb)
             }
         }
     }
@@ -1027,7 +1029,7 @@ open class Storage(context: Context,
     }
 
     override fun updateOpenGroup(openGroup: OpenGroup) {
-        OpenGroupManager.updateOpenGroup(openGroup, context)
+        OpenGroupManager.updateOpenGroup(openGroup, context, lokiThreadDb)
     }
 
     override fun getAllGroups(includeInactive: Boolean): List<GroupRecord> {
@@ -1281,7 +1283,7 @@ open class Storage(context: Context,
                 groups.set(newGroupInfo)
             }
         }
-        ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(context)
+        ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(context, threadDb)
     }
 
     override fun isPinned(threadID: Long): Boolean {
@@ -1306,7 +1308,7 @@ open class Storage(context: Context,
                 contacts.upsertContact(recipient.address.serialize()) {
                     this.priority = PRIORITY_HIDDEN
                 }
-                ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(context)
+                ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(context, threadDb)
             } else if (recipient.isClosedGroupRecipient) {
                 // TODO: handle closed group
                 val volatile = configFactory.convoVolatile ?: return
@@ -1620,7 +1622,7 @@ open class Storage(context: Context,
         }
         val contactsConfig = configFactory.contacts ?: return
         if (contactsConfig.needsPush() && !fromConfigUpdate) {
-            ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(context)
+            ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(context, threadDb)
         }
     }
 

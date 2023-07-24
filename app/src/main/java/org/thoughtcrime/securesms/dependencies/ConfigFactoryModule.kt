@@ -10,6 +10,7 @@ import org.session.libsession.utilities.ConfigFactoryUpdateListener
 import org.session.libsession.utilities.TextSecurePreferences
 import org.thoughtcrime.securesms.crypto.KeyPairUtilities
 import org.thoughtcrime.securesms.database.ConfigDatabase
+import org.thoughtcrime.securesms.database.ThreadDatabase
 import javax.inject.Singleton
 
 @Module
@@ -25,8 +26,9 @@ object ConfigFactoryModule {
     @Singleton
     fun provideConfigFactory(@ApplicationContext context: Context,
                              configDatabase: ConfigDatabase,
+                             threadDatabase: ThreadDatabase,
                              configFactoryUpdateListener: ConfigFactoryUpdateListener): ConfigFactory =
-        ConfigFactory(context, configDatabase) {
+        ConfigFactory(context, configDatabase, threadDatabase) {
             val localUserPublicKey = TextSecurePreferences.getLocalNumber(context)
             val secretKey = maybeUserEdSecretKey(context)
             if (localUserPublicKey == null || secretKey == null) null

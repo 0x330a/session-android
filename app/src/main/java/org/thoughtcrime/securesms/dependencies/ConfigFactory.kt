@@ -14,6 +14,7 @@ import org.session.libsession.utilities.TextSecurePreferences
 import org.session.libsignal.protos.SignalServiceProtos.SharedConfigMessage
 import org.session.libsignal.utilities.Log
 import org.thoughtcrime.securesms.database.ConfigDatabase
+import org.thoughtcrime.securesms.database.ThreadDatabase
 import org.thoughtcrime.securesms.dependencies.DatabaseComponent.Companion.get
 import org.thoughtcrime.securesms.groups.GroupManager
 import org.thoughtcrime.securesms.util.ConfigurationMessageUtilities
@@ -21,6 +22,7 @@ import org.thoughtcrime.securesms.util.ConfigurationMessageUtilities
 class ConfigFactory(
     private val context: Context,
     private val configDatabase: ConfigDatabase,
+    private val threadDatabase: ThreadDatabase,
     private val maybeGetUserInfo: () -> Pair<ByteArray, String>?
 ) :
     ConfigFactoryProtocol {
@@ -122,7 +124,7 @@ class ConfigFactory(
                 _convoVolatileConfig = if (convoDump != null) {
                     ConversationVolatileConfig.newInstance(secretKey, convoDump)
                 } else {
-                    ConfigurationMessageUtilities.generateConversationVolatileDump(context)
+                    ConfigurationMessageUtilities.generateConversationVolatileDump(threadDatabase)
                         ?.let { dump ->
                             ConversationVolatileConfig.newInstance(secretKey, dump)
                         } ?: ConversationVolatileConfig.newInstance(secretKey)

@@ -7,7 +7,6 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.annimon.stream.Stream;
 
-import org.session.libsession.messaging.MessagingModuleConfiguration;
 import org.thoughtcrime.securesms.components.emoji.EmojiPageModel;
 import org.thoughtcrime.securesms.components.emoji.EmojiPageViewGridAdapter;
 import org.thoughtcrime.securesms.database.model.MessageId;
@@ -20,7 +19,6 @@ import java.util.List;
 import io.reactivex.Observable;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.subjects.BehaviorSubject;
-
 public final class ReactWithAnyEmojiViewModel extends ViewModel {
 
   private static final int SEARCH_LIMIT = 40;
@@ -33,13 +31,14 @@ public final class ReactWithAnyEmojiViewModel extends ViewModel {
   private ReactWithAnyEmojiViewModel(@NonNull ReactWithAnyEmojiRepository repository,
                                      long messageId,
                                      boolean isMms,
-                                     @NonNull EmojiSearchRepository emojiSearchRepository)
+                                     @NonNull EmojiSearchRepository emojiSearchRepository,
+                                     @NonNull ReactionsRepository reactionsRepository)
   {
     this.repository            = repository;
     this.emojiSearchRepository = emojiSearchRepository;
     this.searchResults         = BehaviorSubject.createDefault(new EmojiSearchResult());
 
-    Observable<List<ReactWithAnyEmojiPage>> emojiPages = new ReactionsRepository().getReactions(new MessageId(messageId, isMms))
+    Observable<List<ReactWithAnyEmojiPage>> emojiPages = reactionsRepository.getReactions(new MessageId(messageId, isMms))
                                                                                   .map(thisMessagesReactions -> repository.getEmojiPageModels());
 
     Observable<MappingModelList> emojiList = emojiPages.map(pages -> {
@@ -102,22 +101,36 @@ public final class ReactWithAnyEmojiViewModel extends ViewModel {
 
   static class Factory implements ViewModelProvider.Factory {
 
-    private final ReactWithAnyEmojiRepository reactRepository;
+    private final ReactWithAnyEmojiRepository reactWithAnyEmojiRepository;
+    private final ReactionsRepository reactionsRepository;
     private final EmojiSearchRepository searchRepository;
     private final long                        messageId;
     private final boolean                     isMms;
 
-    Factory(@NonNull ReactWithAnyEmojiRepository repository, @NonNull EmojiSearchRepository searchRepository, long messageId, boolean isMms) {
-      this.reactRepository = repository;
+    Factory(@NonNull ReactWithAnyEmojiRepository repository,
+            @NonNull EmojiSearchRepository searchRepository,
+            @NonNull ReactionsRepository reactionsRepository,
+            long messageId,
+            boolean isMms) {
+      this.reactWithAnyEmojiRepository = repository;
       this.searchRepository = searchRepository;
       this.messageId  = messageId;
       this.isMms      = isMms;
+      this.reactionsRepository = reactionsRepository;
     }
 
     @Override
     public @NonNull <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
       //noinspection ConstantConditions
-      return modelClass.cast(new ReactWithAnyEmojiViewModel(reactRepository, messageId, isMms, new EmojiSearchRepository(MessagingModuleConfiguration.getShared().getContext())));
+      return modelClass.cast(
+              new ReactWithAnyEmojiViewModel(
+                      reactWithAnyEmojiRepository,
+                      messageId,
+                      isMms,
+                      searchRepository,
+                      reactionsRepository
+              )
+      );
     }
   }
 

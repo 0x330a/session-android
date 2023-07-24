@@ -837,7 +837,7 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
         binding?.declineMessageRequestButton?.setOnClickListener {
             viewModel.declineMessageRequest()
             lifecycleScope.launch(Dispatchers.IO) {
-                ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(this@ConversationActivityV2)
+                ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(this@ConversationActivityV2, threadDb)
             }
             finish()
         }
@@ -848,7 +848,7 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
         viewModel.acceptMessageRequest()
 
         lifecycleScope.launch(Dispatchers.IO) {
-            ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(this@ConversationActivityV2)
+            ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(this@ConversationActivityV2, threadDb)
         }
     }
 

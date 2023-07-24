@@ -8,16 +8,22 @@ import android.text.SpannableStringBuilder
 import android.text.style.StyleSpan
 import android.widget.Toast
 import androidx.fragment.app.DialogFragment
+import dagger.hilt.android.AndroidEntryPoint
 import network.loki.messenger.R
 import org.session.libsession.messaging.MessagingModuleConfiguration
 import org.session.libsession.utilities.OpenGroupUrlParser
 import org.session.libsignal.utilities.ThreadUtils
 import org.thoughtcrime.securesms.createSessionDialog
+import org.thoughtcrime.securesms.database.ThreadDatabase
 import org.thoughtcrime.securesms.groups.OpenGroupManager
 import org.thoughtcrime.securesms.util.ConfigurationMessageUtilities
+import javax.inject.Inject
 
 /** Shown upon tapping an open group invitation. */
+@AndroidEntryPoint
 class JoinOpenGroupDialog(private val name: String, private val url: String) : DialogFragment() {
+
+    @Inject lateinit var threadDb: ThreadDatabase
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog = createSessionDialog {
         title(resources.getString(R.string.dialog_join_open_group_title, name))
@@ -37,7 +43,7 @@ class JoinOpenGroupDialog(private val name: String, private val url: String) : D
             try {
                 openGroup.apply { OpenGroupManager.add(server, room, serverPublicKey, activity) }
                 MessagingModuleConfiguration.shared.storage.onOpenGroupAdded(openGroup.server, openGroup.room)
-                ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(activity)
+                ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(activity, threadDb)
             } catch (e: Exception) {
                 Toast.makeText(activity, R.string.activity_join_public_chat_error, Toast.LENGTH_SHORT).show()
             }

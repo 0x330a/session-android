@@ -1,5 +1,6 @@
 package org.thoughtcrime.securesms.dependencies
 
+import android.content.Context
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
@@ -10,9 +11,21 @@ import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper
 import org.thoughtcrime.securesms.sskenvironment.ProfileManager
 import org.thoughtcrime.securesms.webrtc.CallMessageProcessor
 
+interface DatabaseComponentProvider {
+    fun databaseComponent(): DatabaseComponent
+}
+
 @EntryPoint
 @InstallIn(SingletonComponent::class)
 interface DatabaseComponent {
+
+    companion object {
+        @JvmStatic
+        fun get(context: Context): DatabaseComponent {
+            return (context.applicationContext as DatabaseComponentProvider).databaseComponent()
+        }
+    }
+
     fun openHelper(): SQLCipherOpenHelper
     fun smsDatabase(): SmsDatabase
     fun mmsDatabase(): MmsDatabase

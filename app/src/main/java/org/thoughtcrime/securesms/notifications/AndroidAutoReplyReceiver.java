@@ -72,6 +72,9 @@ public class AndroidAutoReplyReceiver extends BroadcastReceiver {
   @Inject
   public MessageNotifier messageNotifier;
 
+  @Inject
+  public MarkReadReceiver markReadReceiver;
+
   @SuppressLint("StaticFieldLeak")
   @Override
   public void onReceive(final Context context, Intent intent)

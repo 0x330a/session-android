@@ -26,12 +26,17 @@ import org.session.libsession.utilities.recipients.Recipient
 import org.session.libsignal.utilities.Log
 import org.thoughtcrime.securesms.conversation.start.NewConversationDelegate
 import org.thoughtcrime.securesms.conversation.v2.ConversationActivityV2
+import org.thoughtcrime.securesms.database.ThreadDatabase
 import org.thoughtcrime.securesms.util.ConfigurationMessageUtilities
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class JoinCommunityFragment : Fragment() {
 
     private lateinit var binding: FragmentJoinCommunityBinding
+
+    @Inject
+    lateinit var threadDb: ThreadDatabase
 
     lateinit var delegate: NewConversationDelegate
 
@@ -83,7 +88,7 @@ class JoinCommunityFragment : Fragment() {
                     val threadID = GroupManager.getOpenGroupThreadID(openGroupID, requireContext())
                     val groupID = GroupUtil.getEncodedOpenGroupID(openGroupID.toByteArray())
 
-                    ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(requireContext())
+                    ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(requireContext(), threadDb)
                     withContext(Dispatchers.Main) {
                         val recipient = Recipient.from(requireContext(), Address.fromSerialized(groupID), false)
                         openConversationActivity(requireContext(), threadID, recipient)
