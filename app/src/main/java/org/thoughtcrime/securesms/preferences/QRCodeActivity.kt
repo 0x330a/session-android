@@ -10,6 +10,7 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentPagerAdapter
+import dagger.hilt.android.AndroidEntryPoint
 import network.loki.messenger.R
 import network.loki.messenger.databinding.ActivityQrCodeBinding
 import network.loki.messenger.databinding.FragmentViewMyQrCodeBinding
@@ -19,7 +20,7 @@ import org.session.libsession.utilities.recipients.Recipient
 import org.session.libsignal.utilities.PublicKeyValidation
 import org.thoughtcrime.securesms.PassphraseRequiredActionBarActivity
 import org.thoughtcrime.securesms.conversation.v2.ConversationActivityV2
-import org.thoughtcrime.securesms.dependencies.DatabaseComponent
+import org.thoughtcrime.securesms.database.ThreadDatabase
 import org.thoughtcrime.securesms.util.FileProviderUtil
 import org.thoughtcrime.securesms.util.QRCodeUtilities
 import org.thoughtcrime.securesms.util.ScanQRCodeWrapperFragment
@@ -27,8 +28,14 @@ import org.thoughtcrime.securesms.util.ScanQRCodeWrapperFragmentDelegate
 import org.thoughtcrime.securesms.util.toPx
 import java.io.File
 import java.io.FileOutputStream
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class QRCodeActivity : PassphraseRequiredActionBarActivity(), ScanQRCodeWrapperFragmentDelegate {
+
+    @Inject
+    lateinit var threadDatabase: ThreadDatabase
+
     private lateinit var binding: ActivityQrCodeBinding
     private val adapter = QRCodeActivityAdapter(this)
 
@@ -57,7 +64,7 @@ class QRCodeActivity : PassphraseRequiredActionBarActivity(), ScanQRCodeWrapperF
         val intent = Intent(this, ConversationActivityV2::class.java)
         intent.putExtra(ConversationActivityV2.ADDRESS, recipient.address)
         intent.setDataAndType(getIntent().data, getIntent().type)
-        val existingThread = DatabaseComponent.get(this).threadDatabase().getThreadIdIfExistsFor(recipient)
+        val existingThread = threadDatabase.getThreadIdIfExistsFor(recipient)
         intent.putExtra(ConversationActivityV2.THREAD_ID, existingThread)
         startActivity(intent)
         finish()

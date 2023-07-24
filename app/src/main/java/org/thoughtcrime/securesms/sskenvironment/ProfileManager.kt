@@ -10,22 +10,32 @@ import org.session.libsession.utilities.SSKEnvironment
 import org.session.libsession.utilities.TextSecurePreferences
 import org.session.libsession.utilities.recipients.Recipient
 import org.session.libsignal.utilities.IdPrefix
+import org.thoughtcrime.securesms.database.RecipientDatabase
+import org.thoughtcrime.securesms.database.SessionContactDatabase
+import org.thoughtcrime.securesms.database.SessionJobDatabase
+import org.thoughtcrime.securesms.database.Storage
+import org.thoughtcrime.securesms.database.ThreadDatabase
 import org.thoughtcrime.securesms.dependencies.ConfigFactory
-import org.thoughtcrime.securesms.dependencies.DatabaseComponent
 import org.thoughtcrime.securesms.util.ConfigurationMessageUtilities
 
-class ProfileManager(private val context: Context, private val configFactory: ConfigFactory) : SSKEnvironment.ProfileManagerProtocol {
+class ProfileManager(private val context: Context,
+                     private val configFactory: ConfigFactory,
+                     private val sessionContactDatabase: SessionContactDatabase,
+                     private val storage: Storage,
+                     private val recipientDatabase: RecipientDatabase,
+                     private val sessionJobDatabase: SessionJobDatabase,
+                     private val threadDb: ThreadDatabase,
+) : SSKEnvironment.ProfileManagerProtocol {
 
     override fun setNickname(context: Context, recipient: Recipient, nickname: String?) {
         if (recipient.isLocalNumber) return
         val sessionID = recipient.address.serialize()
-        val contactDatabase = DatabaseComponent.get(context).sessionContactDatabase()
-        var contact = contactDatabase.getContactWithSessionID(sessionID)
+        var contact = sessionContactDatabase.getContactWithSessionID(sessionID)
         if (contact == null) contact = Contact(sessionID)
-        contact.threadID = DatabaseComponent.get(context).storage().getThreadId(recipient.address)
+        contact.threadID = storage.getThreadId(recipient.address)
         if (contact.nickname != nickname) {
             contact.nickname = nickname
-            contactDatabase.setContact(contact)
+            sessionContactDatabase.setContact(contact)
         }
         contactUpdatedInternal(contact)
     }
@@ -34,17 +44,15 @@ class ProfileManager(private val context: Context, private val configFactory: Co
         // New API
         if (recipient.isLocalNumber) return
         val sessionID = recipient.address.serialize()
-        val contactDatabase = DatabaseComponent.get(context).sessionContactDatabase()
-        var contact = contactDatabase.getContactWithSessionID(sessionID)
+        var contact = sessionContactDatabase.getContactWithSessionID(sessionID)
         if (contact == null) contact = Contact(sessionID)
-        contact.threadID = DatabaseComponent.get(context).storage().getThreadId(recipient.address)
+        contact.threadID = storage.getThreadId(recipient.address)
         if (contact.name != name) {
             contact.name = name
-            contactDatabase.setContact(contact)
+            sessionContactDatabase.setContact(contact)
         }
         // Old API
-        val database = DatabaseComponent.get(context).recipientDatabase()
-        database.setProfileName(recipient, name)
+        recipientDatabase.setProfileName(recipient, name)
         recipient.notifyListeners()
         contactUpdatedInternal(contact)
     }
@@ -55,27 +63,24 @@ class ProfileManager(private val context: Context, private val configFactory: Co
         profilePictureURL: String?,
         profileKey: ByteArray?
     ) {
-        val hasPendingDownload = DatabaseComponent
-            .get(context)
-            .sessionJobDatabase()
+        val hasPendingDownload = sessionJobDatabase
             .getAllJobs(RetrieveProfileAvatarJob.KEY).any {
                 (it.value as? RetrieveProfileAvatarJob)?.recipientAddress == recipient.address
             }
         val resolved = recipient.resolve()
-        DatabaseComponent.get(context).storage().setProfilePicture(
+        storage.setProfilePicture(
             recipient = resolved,
             newProfileKey = profileKey,
             newProfilePicture = profilePictureURL
         )
         val sessionID = recipient.address.serialize()
-        val contactDatabase = DatabaseComponent.get(context).sessionContactDatabase()
-        var contact = contactDatabase.getContactWithSessionID(sessionID)
+        var contact = sessionContactDatabase.getContactWithSessionID(sessionID)
         if (contact == null) contact = Contact(sessionID)
-        contact.threadID = DatabaseComponent.get(context).storage().getThreadId(recipient.address)
+        contact.threadID = storage.getThreadId(recipient.address)
         if (!contact.profilePictureEncryptionKey.contentEquals(profileKey) || contact.profilePictureURL != profilePictureURL) {
             contact.profilePictureEncryptionKey = profileKey
             contact.profilePictureURL = profilePictureURL
-            contactDatabase.setContact(contact)
+            sessionContactDatabase.setContact(contact)
         }
         contactUpdatedInternal(contact)
         if (!hasPendingDownload) {
@@ -85,8 +90,7 @@ class ProfileManager(private val context: Context, private val configFactory: Co
     }
 
     override fun setUnidentifiedAccessMode(context: Context, recipient: Recipient, unidentifiedAccessMode: Recipient.UnidentifiedAccessMode) {
-        val database = DatabaseComponent.get(context).recipientDatabase()
-        database.setUnidentifiedAccessMode(recipient, unidentifiedAccessMode)
+        recipientDatabase.setUnidentifiedAccessMode(recipient, unidentifiedAccessMode)
     }
 
     override fun contactUpdatedInternal(contact: Contact): String? {
@@ -106,7 +110,7 @@ class ProfileManager(private val context: Context, private val configFactory: Co
             }
         }
         if (contactConfig.needsPush()) {
-            ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(context)
+            ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(context, threadDb)
         }
         return contactConfig.get(contact.sessionID)?.hashCode()?.toString()
     }

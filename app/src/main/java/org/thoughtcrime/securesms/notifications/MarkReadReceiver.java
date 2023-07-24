@@ -21,23 +21,32 @@ import org.session.libsession.utilities.Address;
 import org.session.libsession.utilities.TextSecurePreferences;
 import org.session.libsession.utilities.recipients.Recipient;
 import org.session.libsignal.utilities.Log;
-import org.thoughtcrime.securesms.ApplicationContext;
 import org.thoughtcrime.securesms.database.MessagingDatabase.ExpirationInfo;
 import org.thoughtcrime.securesms.database.MessagingDatabase.MarkedMessageInfo;
 import org.thoughtcrime.securesms.database.MessagingDatabase.SyncMessageId;
-import org.thoughtcrime.securesms.dependencies.DatabaseComponent;
+import org.thoughtcrime.securesms.database.MmsDatabase;
+import org.thoughtcrime.securesms.database.SmsDatabase;
 import org.thoughtcrime.securesms.service.ExpiringMessageManager;
 import org.thoughtcrime.securesms.util.SessionMetaProtocol;
 
 import java.util.List;
 import java.util.Map;
 
+import javax.inject.Inject;
+
+import dagger.hilt.android.AndroidEntryPoint;
+
+@AndroidEntryPoint
 public class MarkReadReceiver extends BroadcastReceiver {
 
   private static final String TAG                   = MarkReadReceiver.class.getSimpleName();
   public static final  String CLEAR_ACTION          = "network.loki.securesms.notifications.CLEAR";
   public static final  String THREAD_IDS_EXTRA      = "thread_ids";
   public static final  String NOTIFICATION_ID_EXTRA = "notification_id";
+
+  @Inject public ExpiringMessageManager expirationManager;
+  @Inject public MmsDatabase mmsDb;
+  @Inject public SmsDatabase smsDb;
 
   @SuppressLint("StaticFieldLeak")
   @Override
@@ -65,11 +74,11 @@ public class MarkReadReceiver extends BroadcastReceiver {
     }
   }
 
-  public static void process(@NonNull Context context, @NonNull List<MarkedMessageInfo> markedReadMessages) {
+  public void process(@NonNull Context context, @NonNull List<MarkedMessageInfo> markedReadMessages) {
     if (markedReadMessages.isEmpty()) return;
 
     for (MarkedMessageInfo messageInfo : markedReadMessages) {
-      scheduleDeletion(context, messageInfo.getExpirationInfo());
+      scheduleDeletion(messageInfo.getExpirationInfo());
     }
 
     if (!TextSecurePreferences.isReadReceiptsEnabled(context)) return;
@@ -87,12 +96,11 @@ public class MarkReadReceiver extends BroadcastReceiver {
     }
   }
 
-  public static void scheduleDeletion(Context context, ExpirationInfo expirationInfo) {
+  public void scheduleDeletion(ExpirationInfo expirationInfo) {
     if (expirationInfo.getExpiresIn() > 0 && expirationInfo.getExpireStarted() <= 0) {
-      ExpiringMessageManager expirationManager = ApplicationContext.getInstance(context).getExpiringMessageManager();
 
-      if (expirationInfo.isMms()) DatabaseComponent.get(context).mmsDatabase().markExpireStarted(expirationInfo.getId());
-      else                        DatabaseComponent.get(context).smsDatabase().markExpireStarted(expirationInfo.getId());
+      if (expirationInfo.isMms()) mmsDb.markExpireStarted(expirationInfo.getId());
+      else                        smsDb.markExpireStarted(expirationInfo.getId());
 
       expirationManager.scheduleDeletion(expirationInfo.getId(), expirationInfo.isMms(), expirationInfo.getExpiresIn());
     }

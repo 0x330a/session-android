@@ -143,7 +143,7 @@ class ConfigFactory(
                 _userGroups = if (userGroupsDump != null) {
                     UserGroupsConfig.Companion.newInstance(secretKey, userGroupsDump)
                 } else {
-                    ConfigurationMessageUtilities.generateUserGroupDump(context)?.let { dump ->
+                    ConfigurationMessageUtilities.generateUserGroupDump()?.let { dump ->
                         UserGroupsConfig.Companion.newInstance(secretKey, dump)
                     } ?: UserGroupsConfig.newInstance(secretKey)
                 }

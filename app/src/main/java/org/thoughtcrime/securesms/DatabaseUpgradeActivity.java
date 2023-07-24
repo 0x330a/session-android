@@ -23,10 +23,19 @@ import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
 
+import org.session.libsession.messaging.sending_receiving.notifications.MessageNotifier;
 import org.thoughtcrime.securesms.util.Util;
 import org.thoughtcrime.securesms.util.VersionTracker;
 
+import javax.inject.Inject;
+
+import dagger.hilt.android.AndroidEntryPoint;
+
+@AndroidEntryPoint
 public class DatabaseUpgradeActivity extends BaseActivity {
+
+  @Inject
+  public MessageNotifier messageNotifier;
 
   @Override
   public void onCreate(Bundle bundle) {
@@ -49,7 +58,7 @@ public class DatabaseUpgradeActivity extends BaseActivity {
     new AsyncTask<Void, Void, Void>() {
       @Override
       protected Void doInBackground(Void... params) {
-        ApplicationContext.getInstance(context).messageNotifier.updateNotification(context);
+        messageNotifier.updateNotification(context);
         return null;
       }
     }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);

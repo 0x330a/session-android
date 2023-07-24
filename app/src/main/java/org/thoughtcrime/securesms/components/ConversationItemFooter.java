@@ -14,23 +14,31 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import org.session.libsession.snode.SnodeAPI;
-import org.thoughtcrime.securesms.ApplicationContext;
 import org.thoughtcrime.securesms.conversation.v2.components.ExpirationTimerView;
+import org.thoughtcrime.securesms.database.MmsDatabase;
+import org.thoughtcrime.securesms.database.SmsDatabase;
 import org.thoughtcrime.securesms.database.model.MessageRecord;
-import org.thoughtcrime.securesms.dependencies.DatabaseComponent;
 import org.thoughtcrime.securesms.service.ExpiringMessageManager;
 import org.thoughtcrime.securesms.util.DateUtils;
 
 import java.util.Locale;
 
+import javax.inject.Inject;
+
+import dagger.hilt.android.AndroidEntryPoint;
 import network.loki.messenger.R;
 
+@AndroidEntryPoint
 public class ConversationItemFooter extends LinearLayout {
 
   private TextView            dateView;
   private ExpirationTimerView timerView;
   private ImageView           insecureIndicatorView;
   private DeliveryStatusView  deliveryStatusView;
+
+  @Inject public ExpiringMessageManager expiringMessageManager;
+  @Inject public SmsDatabase smsDb;
+  @Inject public MmsDatabase mmsDb;
 
   public ConversationItemFooter(Context context) {
     super(context);
@@ -108,20 +116,19 @@ public class ConversationItemFooter extends LinearLayout {
         this.timerView.startAnimation();
 
         if (messageRecord.getExpireStarted() + messageRecord.getExpiresIn() <= SnodeAPI.getNowWithOffset()) {
-          ApplicationContext.getInstance(getContext()).getExpiringMessageManager().checkSchedule();
+          expiringMessageManager.checkSchedule();
         }
       } else if (!messageRecord.isOutgoing() && !messageRecord.isMediaPending()) {
         new AsyncTask<Void, Void, Void>() {
           @Override
           protected Void doInBackground(Void... params) {
-            ExpiringMessageManager expirationManager = ApplicationContext.getInstance(getContext()).getExpiringMessageManager();
             long                   id                = messageRecord.getId();
             boolean                mms               = messageRecord.isMms();
 
-            if (mms) DatabaseComponent.get(getContext()).mmsDatabase().markExpireStarted(id);
-            else     DatabaseComponent.get(getContext()).smsDatabase().markExpireStarted(id);
+            if (mms) mmsDb.markExpireStarted(id);
+            else     smsDb.markExpireStarted(id);
 
-            expirationManager.scheduleDeletion(id, mms, messageRecord.getExpiresIn());
+            expiringMessageManager.scheduleDeletion(id, mms, messageRecord.getExpiresIn());
             return null;
           }
         }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);

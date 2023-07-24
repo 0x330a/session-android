@@ -34,10 +34,10 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
+import org.session.libsession.messaging.sending_receiving.notifications.MessageNotifier;
 import org.session.libsession.utilities.ServiceUtil;
 import org.session.libsession.utilities.TextSecurePreferences;
 import org.session.libsignal.utilities.Log;
-import org.thoughtcrime.securesms.ApplicationContext;
 import org.thoughtcrime.securesms.DatabaseUpgradeActivity;
 import org.thoughtcrime.securesms.DummyActivity;
 import org.thoughtcrime.securesms.home.HomeActivity;
@@ -45,6 +45,9 @@ import org.thoughtcrime.securesms.notifications.NotificationChannels;
 
 import java.util.concurrent.TimeUnit;
 
+import javax.inject.Inject;
+
+import dagger.hilt.android.AndroidEntryPoint;
 import network.loki.messenger.R;
 
 /**
@@ -54,6 +57,7 @@ import network.loki.messenger.R;
  */
 //TODO AC: This service does only serve one purpose now - to track the screen lock state and handle the timer.
 // We need to refactor it and cleanup from all the old Signal code.
+@AndroidEntryPoint
 public class KeyCachingService extends Service {
 
   private static final String TAG = KeyCachingService.class.getSimpleName();
@@ -95,6 +99,9 @@ public class KeyCachingService extends Service {
 
   }
 
+  @Inject
+  public MessageNotifier messageNotifier;
+
   public KeyCachingService() {}
 
   public static synchronized boolean isLocked(Context context) {
@@ -106,8 +113,8 @@ public class KeyCachingService extends Service {
     ServiceUtil.getAlarmManager(context).cancel(buildExpirationPendingIntent(context));
   }
 
-  public static void onAppBackgrounded(@NonNull Context context) {
-    startTimeoutIfAppropriate(context);
+  public static void onAppBackgrounded(@NonNull Context context, MessageNotifier messageNotifier) {
+    startTimeoutIfAppropriate(context, messageNotifier);
   }
 
   public static synchronized @Nullable Object getMasterSecret(Context context) {
@@ -125,7 +132,7 @@ public class KeyCachingService extends Service {
         @Override
         protected Void doInBackground(Void... params) {
           if (!DatabaseUpgradeActivity.isUpdate(KeyCachingService.this)) {
-            ApplicationContext.getInstance(KeyCachingService.this).messageNotifier.updateNotification(KeyCachingService.this);
+            messageNotifier.updateNotification(KeyCachingService.this);
           }
           return null;
         }
@@ -191,7 +198,7 @@ public class KeyCachingService extends Service {
     new AsyncTask<Void, Void, Void>() {
       @Override
       protected Void doInBackground(Void... params) {
-        ApplicationContext.getInstance(KeyCachingService.this).messageNotifier.updateNotification(KeyCachingService.this);
+        messageNotifier.updateNotification(KeyCachingService.this);
         return null;
       }
     }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
@@ -202,8 +209,8 @@ public class KeyCachingService extends Service {
     setMasterSecret(masterSecret);
   }
 
-  private static void startTimeoutIfAppropriate(@NonNull Context context) {
-    boolean appVisible       = ApplicationContext.getInstance(context).isAppVisible();
+  private static void startTimeoutIfAppropriate(@NonNull Context context, MessageNotifier messageNotifier) {
+    boolean appVisible       = messageNotifier.getAppVisible();
     boolean secretSet        = KeyCachingService.masterSecret != null;
 
     boolean timeoutEnabled   = TextSecurePreferences.isPassphraseTimeoutEnabled(context);

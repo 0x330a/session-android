@@ -152,14 +152,12 @@ object OpenGroupManager {
     }
 
     fun updateOpenGroup(openGroup: OpenGroup, context: Context) {
-        val threadDB = DatabaseComponent.get(context).lokiThreadDatabase()
         val openGroupID = "${openGroup.server}.${openGroup.room}"
         val threadID = GroupManager.getOpenGroupThreadID(openGroupID, context)
         threadDB.setOpenGroupChat(openGroup, threadID)
     }
 
     fun isUserModerator(context: Context, groupId: String, standardPublicKey: String, blindedPublicKey: String? = null): Boolean {
-        val memberDatabase = DatabaseComponent.get(context).groupMemberDatabase()
         val standardRoles = memberDatabase.getGroupMemberRoles(groupId, standardPublicKey)
         val blindedRoles = blindedPublicKey?.let { memberDatabase.getGroupMemberRoles(groupId, it) } ?: emptyList()
 

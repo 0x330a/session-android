@@ -1,14 +1,12 @@
 package org.thoughtcrime.securesms.util
 
-import android.content.Context
 import org.session.libsession.utilities.recipients.Recipient
-import org.thoughtcrime.securesms.dependencies.DatabaseComponent
+import org.thoughtcrime.securesms.database.ThreadDatabase
 
 object ContactUtilities {
 
     @JvmStatic
-    fun getAllContacts(context: Context): Set<Recipient> {
-        val threadDatabase = DatabaseComponent.get(context).threadDatabase()
+    fun getAllContacts(threadDatabase: ThreadDatabase): Set<Recipient> {
         val cursor = threadDatabase.conversationList
         val result = mutableSetOf<Recipient>()
         threadDatabase.readerFor(cursor).use { reader ->

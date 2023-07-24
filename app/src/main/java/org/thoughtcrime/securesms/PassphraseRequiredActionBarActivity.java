@@ -11,15 +11,21 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import org.session.libsession.messaging.sending_receiving.notifications.MessageNotifier;
+import org.session.libsession.utilities.TextSecurePreferences;
 import org.session.libsignal.utilities.Log;
 import org.thoughtcrime.securesms.home.HomeActivity;
 import org.thoughtcrime.securesms.onboarding.LandingActivity;
 import org.thoughtcrime.securesms.service.KeyCachingService;
-import org.session.libsession.utilities.TextSecurePreferences;
 
 import java.util.Locale;
 
+import javax.inject.Inject;
+
+import dagger.hilt.android.AndroidEntryPoint;
+
 //TODO AC: Rename to ScreenLockActionBarActivity.
+@AndroidEntryPoint
 public abstract class PassphraseRequiredActionBarActivity extends BaseActionBarActivity {
   private static final String TAG = PassphraseRequiredActionBarActivity.class.getSimpleName();
 
@@ -31,6 +37,9 @@ public abstract class PassphraseRequiredActionBarActivity extends BaseActionBarA
   private static final int STATE_WELCOME_SCREEN           = 3;
 
   private BroadcastReceiver          clearKeyReceiver;
+
+  @Inject
+  public MessageNotifier notifier;
 
   @Override
   protected final void onCreate(Bundle savedInstanceState) {
@@ -68,7 +77,7 @@ public abstract class PassphraseRequiredActionBarActivity extends BaseActionBarA
 
   public void onMasterSecretCleared() {
     Log.i(TAG, "onMasterSecretCleared()");
-    if (ApplicationContext.getInstance(this).isAppVisible()) routeApplicationState(true);
+    if (notifier.getAppVisible()) routeApplicationState(true);
     else                                                     finish();
   }
 

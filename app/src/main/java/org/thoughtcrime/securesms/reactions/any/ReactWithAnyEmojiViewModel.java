@@ -102,12 +102,14 @@ public final class ReactWithAnyEmojiViewModel extends ViewModel {
 
   static class Factory implements ViewModelProvider.Factory {
 
-    private final ReactWithAnyEmojiRepository repository;
+    private final ReactWithAnyEmojiRepository reactRepository;
+    private final EmojiSearchRepository searchRepository;
     private final long                        messageId;
     private final boolean                     isMms;
 
-    Factory(@NonNull ReactWithAnyEmojiRepository repository, long messageId, boolean isMms) {
-      this.repository = repository;
+    Factory(@NonNull ReactWithAnyEmojiRepository repository, @NonNull EmojiSearchRepository searchRepository, long messageId, boolean isMms) {
+      this.reactRepository = repository;
+      this.searchRepository = searchRepository;
       this.messageId  = messageId;
       this.isMms      = isMms;
     }
@@ -115,7 +117,7 @@ public final class ReactWithAnyEmojiViewModel extends ViewModel {
     @Override
     public @NonNull <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
       //noinspection ConstantConditions
-      return modelClass.cast(new ReactWithAnyEmojiViewModel(repository, messageId, isMms, new EmojiSearchRepository(MessagingModuleConfiguration.getShared().getContext())));
+      return modelClass.cast(new ReactWithAnyEmojiViewModel(reactRepository, messageId, isMms, new EmojiSearchRepository(MessagingModuleConfiguration.getShared().getContext())));
     }
   }
 

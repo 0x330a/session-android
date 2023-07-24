@@ -9,6 +9,7 @@ import androidx.core.view.isVisible
 import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DividerItemDecoration
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -19,10 +20,16 @@ import org.session.libsession.snode.SnodeAPI
 import org.session.libsignal.utilities.Log
 import org.thoughtcrime.securesms.ApplicationContext
 import org.thoughtcrime.securesms.createSessionDialog
+import org.thoughtcrime.securesms.database.ThreadDatabase
 import org.thoughtcrime.securesms.util.ConfigurationMessageUtilities
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class ClearAllDataDialog : DialogFragment() {
     private lateinit var binding: DialogClearAllDataBinding
+
+    @Inject
+    lateinit var threadDb: ThreadDatabase
 
     enum class Steps {
         INFO_PROMPT,
@@ -104,11 +111,11 @@ class ClearAllDataDialog : DialogFragment() {
 
             if (!deleteNetworkMessages) {
                 try {
-                    ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(requireContext()).get()
+                    ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(requireContext(), threadDb).get()
                 } catch (e: Exception) {
                     Log.e("Loki", "Failed to force sync", e)
                 }
-                ApplicationContext.getInstance(context).clearAllData(false)
+                (requireContext().applicationContext as ApplicationContext).clearAllData(false)
                 withContext(Dispatchers.Main) {
                     dismiss()
                 }
@@ -127,7 +134,7 @@ class ClearAllDataDialog : DialogFragment() {
                     }
                 } else if (result.values.all { it }) {
                     // don't force sync because all the messages are deleted?
-                    ApplicationContext.getInstance(context).clearAllData(false)
+                    (requireContext().applicationContext as ApplicationContext).clearAllData(false)
                     withContext(Dispatchers.Main) {
                         dismiss()
                     }

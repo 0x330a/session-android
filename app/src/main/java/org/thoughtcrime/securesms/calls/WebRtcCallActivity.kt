@@ -29,7 +29,7 @@ import org.session.libsession.avatars.ProfileContactPhoto
 import org.session.libsession.messaging.contacts.Contact
 import org.session.libsignal.utilities.Log
 import org.thoughtcrime.securesms.PassphraseRequiredActionBarActivity
-import org.thoughtcrime.securesms.dependencies.DatabaseComponent
+import org.thoughtcrime.securesms.database.SessionContactDatabase
 import org.thoughtcrime.securesms.mms.GlideApp
 import org.thoughtcrime.securesms.permissions.Permissions
 import org.thoughtcrime.securesms.service.WebRtcCallService
@@ -44,9 +44,13 @@ import org.thoughtcrime.securesms.webrtc.CallViewModel.State.CALL_RECONNECTING
 import org.thoughtcrime.securesms.webrtc.CallViewModel.State.CALL_RINGING
 import org.thoughtcrime.securesms.webrtc.audio.SignalAudioManager.AudioDevice.EARPIECE
 import org.thoughtcrime.securesms.webrtc.audio.SignalAudioManager.AudioDevice.SPEAKER_PHONE
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class WebRtcCallActivity : PassphraseRequiredActionBarActivity() {
+
+    @Inject
+    lateinit var sessionContactDatabase: SessionContactDatabase
 
     companion object {
         const val ACTION_PRE_OFFER = "pre-offer"
@@ -365,7 +369,7 @@ class WebRtcCallActivity : PassphraseRequiredActionBarActivity() {
 
     private fun getUserDisplayName(publicKey: String): String {
         val contact =
-            DatabaseComponent.get(this).sessionContactDatabase().getContactWithSessionID(publicKey)
+            sessionContactDatabase.getContactWithSessionID(publicKey)
         return contact?.displayName(Contact.ContactContext.REGULAR) ?: publicKey
     }
 

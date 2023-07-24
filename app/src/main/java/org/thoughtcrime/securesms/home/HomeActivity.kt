@@ -37,6 +37,7 @@ import org.greenrobot.eventbus.ThreadMode
 import org.session.libsession.messaging.MessagingModuleConfiguration
 import org.session.libsession.messaging.jobs.JobQueue
 import org.session.libsession.messaging.sending_receiving.MessageSender
+import org.session.libsession.messaging.sending_receiving.notifications.MessageNotifier
 import org.session.libsession.snode.SnodeAPI
 import org.session.libsession.utilities.Address
 import org.session.libsession.utilities.GroupUtil
@@ -53,13 +54,15 @@ import org.thoughtcrime.securesms.conversation.v2.ConversationActivityV2
 import org.thoughtcrime.securesms.conversation.v2.utilities.NotificationUtils
 import org.thoughtcrime.securesms.crypto.IdentityKeyUtil
 import org.thoughtcrime.securesms.database.GroupDatabase
+import org.thoughtcrime.securesms.database.LokiAPIDatabase
+import org.thoughtcrime.securesms.database.LokiThreadDatabase
 import org.thoughtcrime.securesms.database.MmsSmsDatabase
 import org.thoughtcrime.securesms.database.RecipientDatabase
+import org.thoughtcrime.securesms.database.SessionJobDatabase
 import org.thoughtcrime.securesms.database.Storage
 import org.thoughtcrime.securesms.database.ThreadDatabase
 import org.thoughtcrime.securesms.database.model.ThreadRecord
 import org.thoughtcrime.securesms.dependencies.ConfigFactory
-import org.thoughtcrime.securesms.dependencies.DatabaseComponent
 import org.thoughtcrime.securesms.groups.OpenGroupManager
 import org.thoughtcrime.securesms.home.search.GlobalSearchAdapter
 import org.thoughtcrime.securesms.home.search.GlobalSearchInputLayout
@@ -71,8 +74,9 @@ import org.thoughtcrime.securesms.onboarding.SeedActivity
 import org.thoughtcrime.securesms.onboarding.SeedReminderViewDelegate
 import org.thoughtcrime.securesms.permissions.Permissions
 import org.thoughtcrime.securesms.preferences.SettingsActivity
-import org.thoughtcrime.securesms.showSessionDialog
 import org.thoughtcrime.securesms.showMuteDialog
+import org.thoughtcrime.securesms.showSessionDialog
+import org.thoughtcrime.securesms.sskenvironment.TypingStatusRepository
 import org.thoughtcrime.securesms.util.ConfigurationMessageUtilities
 import org.thoughtcrime.securesms.util.DateUtils
 import org.thoughtcrime.securesms.util.IP2Country
@@ -103,9 +107,14 @@ class HomeActivity : PassphraseRequiredActionBarActivity(),
     @Inject lateinit var mmsSmsDatabase: MmsSmsDatabase
     @Inject lateinit var recipientDatabase: RecipientDatabase
     @Inject lateinit var storage: Storage
-    @Inject lateinit var groupDatabase: GroupDatabase
+    @Inject lateinit var groupDb: GroupDatabase
     @Inject lateinit var textSecurePreferences: TextSecurePreferences
     @Inject lateinit var configFactory: ConfigFactory
+    @Inject lateinit var sessionJobDb: SessionJobDatabase
+    @Inject lateinit var messageNotifier: MessageNotifier
+    @Inject lateinit var typingStatusRepository: TypingStatusRepository
+    @Inject lateinit var lokiThreadDb: LokiThreadDatabase
+    @Inject lateinit var lokiApiDb: LokiAPIDatabase
 
     private val globalSearchViewModel by viewModels<GlobalSearchViewModel>()
     private val homeViewModel by viewModels<HomeViewModel>()
@@ -231,8 +240,7 @@ class HomeActivity : PassphraseRequiredActionBarActivity(),
                 (applicationContext as ApplicationContext).startPollingIfNeeded()
                 // update things based on TextSecurePrefs (profile info etc)
                 // Set up remaining components if needed
-                val application = ApplicationContext.getInstance(this@HomeActivity)
-                application.registerForFCMIfNeeded(false)
+                (applicationContext as ApplicationContext).registerForFCMIfNeeded(false)
                 if (textSecurePreferences.getLocalNumber() != null) {
                     OpenGroupManager.startPolling()
                     JobQueue.shared.resumePendingJobs()
@@ -361,7 +369,7 @@ class HomeActivity : PassphraseRequiredActionBarActivity(),
 
     override fun onResume() {
         super.onResume()
-        ApplicationContext.getInstance(this).messageNotifier.setHomeScreenVisible(true)
+        messageNotifier.setHomeScreenVisible(true)
         if (textSecurePreferences.getLocalNumber() == null) { return; } // This can be the case after a secondary device is auto-cleared
         IdentityKeyUtil.checkUpdate(this)
         binding.profileButton.root.recycle() // clear cached image before update tje profilePictureView
@@ -376,7 +384,7 @@ class HomeActivity : PassphraseRequiredActionBarActivity(),
         // This will only run if we aren't using new configs, as they are schedule to sync when there are changes applied
         if (textSecurePreferences.getConfigurationMessageSynced()) {
             lifecycleScope.launch(Dispatchers.IO) {
-                ConfigurationMessageUtilities.syncConfigurationIfNeeded(this@HomeActivity)
+                ConfigurationMessageUtilities.syncConfigurationIfNeeded(this@HomeActivity, threadDb)
             }
         }
 
@@ -389,7 +397,7 @@ class HomeActivity : PassphraseRequiredActionBarActivity(),
 
     override fun onPause() {
         super.onPause()
-        ApplicationContext.getInstance(this).messageNotifier.setHomeScreenVisible(false)
+        messageNotifier.setHomeScreenVisible(false)
 
         homeViewModel.getObservable(this).removeObservers(this)
     }
@@ -420,7 +428,7 @@ class HomeActivity : PassphraseRequiredActionBarActivity(),
             updateEmptyState()
         }
 
-        ApplicationContext.getInstance(this@HomeActivity).typingStatusRepository.typingThreads.observe(this) { threadIds ->
+        typingStatusRepository.typingThreads.observe(this) { threadIds ->
             homeAdapter.typingThreadIDs = (threadIds ?: setOf())
         }
     }
@@ -489,11 +497,12 @@ class HomeActivity : PassphraseRequiredActionBarActivity(),
                 Toast.makeText(this, R.string.copied_to_clipboard, Toast.LENGTH_SHORT).show()
             }
             else if (thread.recipient.isOpenGroupRecipient) {
-                val threadId = threadDb.getThreadIdIfExistsFor(thread.recipient) ?: return@onCopyConversationId Unit
-                val openGroup = DatabaseComponent.get(this@HomeActivity).lokiThreadDatabase().getOpenGroupChat(threadId) ?: return@onCopyConversationId Unit
+                val threadId = threadDb.getThreadIdIfExistsFor(thread.recipient)
+                if (threadId == -1L) return@onCopyConversationId Unit
+                val openGroup = lokiThreadDb.getOpenGroupChat(threadId) ?: return@onCopyConversationId Unit
 
                 val clip = ClipData.newPlainText("Community URL", openGroup.joinURL)
-                val manager = getSystemService(PassphraseRequiredActionBarActivity.CLIPBOARD_SERVICE) as ClipboardManager
+                val manager = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
                 manager.setPrimaryClip(clip)
                 Toast.makeText(this, R.string.copied_to_clipboard, Toast.LENGTH_SHORT).show()
             }
@@ -619,7 +628,7 @@ class HomeActivity : PassphraseRequiredActionBarActivity(),
         val threadID = thread.threadId
         val recipient = thread.recipient
         val message = if (recipient.isGroupRecipient) {
-            val group = groupDatabase.getGroup(recipient.address.toString()).orNull()
+            val group = groupDb.getGroup(recipient.address.toString()).orNull()
             if (group != null && group.admins.map { it.toString() }.contains(textSecurePreferences.getLocalNumber())) {
                 "Because you are the creator of this group it will be deleted for everyone. This cannot be undone."
             } else {
@@ -635,18 +644,18 @@ class HomeActivity : PassphraseRequiredActionBarActivity(),
                 lifecycleScope.launch(Dispatchers.Main) {
                     val context = this@HomeActivity
                     // Cancel any outstanding jobs
-                    DatabaseComponent.get(context).sessionJobDatabase().cancelPendingMessageSendJobs(threadID)
+                    sessionJobDb.cancelPendingMessageSendJobs(threadID)
                     // Send a leave group message if this is an active closed group
-                    if (recipient.address.isClosedGroup && DatabaseComponent.get(context).groupDatabase().isActive(recipient.address.toGroupString())) {
+                    if (recipient.address.isClosedGroup && groupDb.isActive(recipient.address.toGroupString())) {
                         try {
                             GroupUtil.doubleDecodeGroupID(recipient.address.toString()).toHexString()
-                                .takeIf(DatabaseComponent.get(context).lokiAPIDatabase()::isClosedGroup)
+                                .takeIf(lokiApiDb::isClosedGroup)
                                 ?.let { MessageSender.explicitLeave(it, false) }
                         } catch (_: IOException) {
                         }
                     }
                     // Delete the conversation
-                    val v2OpenGroup = DatabaseComponent.get(context).lokiThreadDatabase().getOpenGroupChat(threadID)
+                    val v2OpenGroup = lokiThreadDb.getOpenGroupChat(threadID)
                     if (v2OpenGroup != null) {
                         v2OpenGroup.apply { OpenGroupManager.delete(server, room, context) }
                     } else {
@@ -655,7 +664,7 @@ class HomeActivity : PassphraseRequiredActionBarActivity(),
                         }
                     }
                     // Update the badge count
-                    ApplicationContext.getInstance(context).messageNotifier.updateNotification(context)
+                    messageNotifier.updateNotification(context)
                     // Notify the user
                     val toastMessage = if (recipient.isGroupRecipient) R.string.MessageRecord_left_group else R.string.activity_home_conversation_deleted_message
                     Toast.makeText(context, toastMessage, Toast.LENGTH_LONG).show()

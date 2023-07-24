@@ -11,16 +11,16 @@ import android.widget.PopupMenu
 import androidx.recyclerview.widget.RecyclerView
 import network.loki.messenger.R
 import org.thoughtcrime.securesms.database.CursorRecyclerViewAdapter
+import org.thoughtcrime.securesms.database.ThreadDatabase
 import org.thoughtcrime.securesms.database.model.ThreadRecord
-import org.thoughtcrime.securesms.dependencies.DatabaseComponent
 import org.thoughtcrime.securesms.mms.GlideRequests
 
 class MessageRequestsAdapter(
     context: Context,
     cursor: Cursor?,
-    val listener: ConversationClickListener
+    val listener: ConversationClickListener,
+    private val threadDatabase: ThreadDatabase,
 ) : CursorRecyclerViewAdapter<MessageRequestsAdapter.ViewHolder>(context, cursor) {
-    private val threadDatabase = DatabaseComponent.get(context).threadDatabase()
     lateinit var glide: GlideRequests
 
     class ViewHolder(val view: MessageRequestView) : RecyclerView.ViewHolder(view)

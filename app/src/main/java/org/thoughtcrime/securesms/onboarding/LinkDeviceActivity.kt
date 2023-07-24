@@ -136,9 +136,7 @@ class LinkDeviceActivity : BaseActionBarActivity(), ScanQRCodeWrapperFragmentDel
                 snackBar.show()
             }
             // start polling and wait for updated message
-            ApplicationContext.getInstance(this@LinkDeviceActivity).apply {
-                startPollingIfNeeded()
-            }
+            (applicationContext as ApplicationContext).startPollingIfNeeded()
             TextSecurePreferences.events.filter { it == TextSecurePreferences.CONFIGURATION_SYNCED }.collect {
                 // handle we've synced
                 snackBar.dismiss()

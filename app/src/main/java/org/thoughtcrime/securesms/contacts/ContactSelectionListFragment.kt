@@ -8,13 +8,18 @@ import androidx.fragment.app.Fragment
 import androidx.loader.app.LoaderManager
 import androidx.loader.content.Loader
 import androidx.recyclerview.widget.LinearLayoutManager
+import dagger.hilt.android.AndroidEntryPoint
 import network.loki.messenger.databinding.ContactSelectionListFragmentBinding
 import org.session.libsession.utilities.recipients.Recipient
 import org.session.libsignal.utilities.Log
+import org.thoughtcrime.securesms.database.ThreadDatabase
 import org.thoughtcrime.securesms.mms.GlideApp
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class ContactSelectionListFragment : Fragment(), LoaderManager.LoaderCallbacks<List<ContactSelectionListItem>>, ContactClickListener {
     private lateinit var binding: ContactSelectionListFragmentBinding
+    @Inject lateinit var threadDb: ThreadDatabase
     private var cursorFilter: String? = null
     var onContactSelectedListener: OnContactSelectedListener? = null
 
@@ -76,7 +81,7 @@ class ContactSelectionListFragment : Fragment(), LoaderManager.LoaderCallbacks<L
     override fun onCreateLoader(id: Int, args: Bundle?): Loader<List<ContactSelectionListItem>> {
         return ContactSelectionListLoader(requireActivity(),
             requireActivity().intent.getIntExtra(DISPLAY_MODE, ContactsCursorLoader.DisplayMode.FLAG_ALL),
-            cursorFilter)
+            cursorFilter, threadDb)
     }
 
     override fun onLoadFinished(loader: Loader<List<ContactSelectionListItem>>, items: List<ContactSelectionListItem>) {

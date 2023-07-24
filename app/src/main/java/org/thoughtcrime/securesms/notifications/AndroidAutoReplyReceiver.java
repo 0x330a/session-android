@@ -30,21 +30,28 @@ import org.session.libsession.messaging.messages.signal.OutgoingMediaMessage;
 import org.session.libsession.messaging.messages.signal.OutgoingTextMessage;
 import org.session.libsession.messaging.messages.visible.VisibleMessage;
 import org.session.libsession.messaging.sending_receiving.MessageSender;
+import org.session.libsession.messaging.sending_receiving.notifications.MessageNotifier;
 import org.session.libsession.snode.SnodeAPI;
 import org.session.libsession.utilities.Address;
 import org.session.libsession.utilities.recipients.Recipient;
 import org.session.libsignal.utilities.Log;
-import org.thoughtcrime.securesms.ApplicationContext;
 import org.thoughtcrime.securesms.database.MessagingDatabase.MarkedMessageInfo;
-import org.thoughtcrime.securesms.dependencies.DatabaseComponent;
+import org.thoughtcrime.securesms.database.MmsDatabase;
+import org.thoughtcrime.securesms.database.SmsDatabase;
+import org.thoughtcrime.securesms.database.ThreadDatabase;
 import org.thoughtcrime.securesms.mms.MmsException;
 
 import java.util.Collections;
 import java.util.List;
 
+import javax.inject.Inject;
+
+import dagger.hilt.android.AndroidEntryPoint;
+
 /**
  * Get the response text from the Android Auto and sends an message as a reply
  */
+@AndroidEntryPoint
 public class AndroidAutoReplyReceiver extends BroadcastReceiver {
 
   public static final String TAG             = AndroidAutoReplyReceiver.class.getSimpleName();
@@ -52,6 +59,18 @@ public class AndroidAutoReplyReceiver extends BroadcastReceiver {
   public static final String ADDRESS_EXTRA   = "car_address";
   public static final String VOICE_REPLY_KEY = "car_voice_reply_key";
   public static final String THREAD_ID_EXTRA = "car_reply_thread_id";
+
+  @Inject
+  public ThreadDatabase threadDb;
+
+  @Inject
+  public MmsDatabase mmsDb;
+
+  @Inject
+  public SmsDatabase smsDb;
+
+  @Inject
+  public MessageNotifier messageNotifier;
 
   @SuppressLint("StaticFieldLeak")
   @Override
@@ -76,7 +95,7 @@ public class AndroidAutoReplyReceiver extends BroadcastReceiver {
           long replyThreadId;
 
           if (threadId == -1) {
-            replyThreadId = DatabaseComponent.get(context).threadDatabase().getOrCreateThreadIdFor(recipient);
+            replyThreadId = threadDb.getOrCreateThreadIdFor(recipient);
           } else {
             replyThreadId = threadId;
           }
@@ -90,20 +109,20 @@ public class AndroidAutoReplyReceiver extends BroadcastReceiver {
             Log.w("AndroidAutoReplyReceiver", "GroupRecipient, Sending media message");
             OutgoingMediaMessage reply = OutgoingMediaMessage.from(message, recipient, Collections.emptyList(), null, null);
             try {
-              DatabaseComponent.get(context).mmsDatabase().insertMessageOutbox(reply, replyThreadId, false, null, true);
+              mmsDb.insertMessageOutbox(reply, replyThreadId, false, null, true);
             } catch (MmsException e) {
               Log.w(TAG, e);
             }
           } else {
             Log.w("AndroidAutoReplyReceiver", "Sending regular message ");
             OutgoingTextMessage reply = OutgoingTextMessage.from(message, recipient);
-            DatabaseComponent.get(context).smsDatabase().insertMessageOutbox(replyThreadId, reply, false, SnodeAPI.getNowWithOffset(), null, true);
+            smsDb.insertMessageOutbox(replyThreadId, reply, false, SnodeAPI.getNowWithOffset(), null, true);
           }
 
-          List<MarkedMessageInfo> messageIds = DatabaseComponent.get(context).threadDatabase().setRead(replyThreadId, true);
+          List<MarkedMessageInfo> messageIds = threadDb.setRead(replyThreadId, true);
 
-          ApplicationContext.getInstance(context).messageNotifier.updateNotification(context);
-          MarkReadReceiver.process(context, messageIds);
+          messageNotifier.updateNotification(context);
+          markReadReceiver.process(context, messageIds);
 
           return null;
         }

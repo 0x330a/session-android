@@ -3,15 +3,18 @@ package org.thoughtcrime.securesms.notifications
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import androidx.hilt.work.HiltWorker
 import androidx.work.Constraints
 import androidx.work.Data
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
-import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.Worker
 import androidx.work.WorkerParameters
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedInject
 import nl.komponents.kovenant.Promise
 import nl.komponents.kovenant.all
 import nl.komponents.kovenant.functional.bind
@@ -24,10 +27,15 @@ import org.session.libsession.snode.SnodeAPI
 import org.session.libsession.utilities.TextSecurePreferences
 import org.session.libsignal.utilities.Log
 import org.session.libsignal.utilities.recover
-import org.thoughtcrime.securesms.dependencies.DatabaseComponent
+import org.thoughtcrime.securesms.database.LokiThreadDatabase
 import java.util.concurrent.TimeUnit
 
-class BackgroundPollWorker(val context: Context, params: WorkerParameters) : Worker(context, params) {
+@HiltWorker
+class BackgroundPollWorker @AssistedInject constructor(
+    @Assisted val context: Context,
+    @Assisted params: WorkerParameters,
+    private val threadDb: LokiThreadDatabase
+) : Worker(context, params) {
     enum class Targets {
         DMS, CLOSED_GROUPS, OPEN_GROUPS
     }
@@ -131,8 +139,7 @@ class BackgroundPollWorker(val context: Context, params: WorkerParameters) : Wor
             var ogPollError: Exception? = null
 
             if (requestTargets.contains(Targets.OPEN_GROUPS)) {
-                val threadDB = DatabaseComponent.get(context).lokiThreadDatabase()
-                val openGroups = threadDB.getAllOpenGroups()
+                val openGroups = threadDb.getAllOpenGroups()
                 val openGroupServers = openGroups.map { it.value.server }.toSet()
 
                 for (server in openGroupServers) {

@@ -14,6 +14,7 @@ import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.lifecycleScope
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.Job
@@ -23,8 +24,8 @@ import network.loki.messenger.BuildConfig
 import network.loki.messenger.R
 import org.session.libsignal.utilities.ExternalStorageUtil
 import org.session.libsignal.utilities.Log
-import org.thoughtcrime.securesms.ApplicationContext
 import org.thoughtcrime.securesms.createSessionDialog
+import org.thoughtcrime.securesms.logging.PersistentLogger
 import org.thoughtcrime.securesms.util.FileProviderUtil
 import org.thoughtcrime.securesms.util.StreamUtil
 import java.io.File
@@ -32,8 +33,13 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.util.Objects
 import java.util.concurrent.TimeUnit
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class ShareLogsDialog : DialogFragment() {
+
+    @Inject
+    lateinit var persistentLogger: PersistentLogger
 
     private var shareJob: Job? = null
 
@@ -47,7 +53,6 @@ class ShareLogsDialog : DialogFragment() {
     private fun shareLogs() {
         shareJob?.cancel()
         shareJob = lifecycleScope.launch(Dispatchers.IO) {
-            val persistentLogger = ApplicationContext.getInstance(context).persistentLogger
             try {
                 val context = requireContext()
                 val outputUri: Uri = ExternalStorageUtil.getDownloadUri()

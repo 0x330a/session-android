@@ -13,6 +13,7 @@ import org.session.libsession.utilities.TextSecurePreferences
 import org.session.libsignal.database.LokiAPIDatabaseProtocol
 import org.thoughtcrime.securesms.components.TypingStatusSender
 import org.thoughtcrime.securesms.database.LokiAPIDatabase
+import org.thoughtcrime.securesms.logging.PersistentLogger
 import org.thoughtcrime.securesms.repository.ConversationRepository
 import org.thoughtcrime.securesms.repository.DefaultConversationRepository
 import org.thoughtcrime.securesms.service.ExpiringMessageManager
@@ -52,4 +53,5 @@ interface AppComponent {
     fun typingStatusSender(): TypingStatusSender
     fun readReceiptManager(): ReadReceiptManager
     fun expiringMessageManager(): ExpiringMessageManager
+    fun persistentLogger(): PersistentLogger
 }

@@ -50,6 +50,7 @@ import org.session.libsession.messaging.sending_receiving.attachments.Attachment
 import org.session.libsession.messaging.sending_receiving.attachments.DatabaseAttachment
 import org.session.libsession.messaging.sending_receiving.data_extraction.DataExtractionNotificationInfoMessage
 import org.session.libsession.messaging.sending_receiving.link_preview.LinkPreview
+import org.session.libsession.messaging.sending_receiving.notifications.MessageNotifier
 import org.session.libsession.messaging.sending_receiving.notifications.PushNotificationAPI
 import org.session.libsession.messaging.sending_receiving.pollers.ClosedGroupPollerV2
 import org.session.libsession.messaging.sending_receiving.quotes.QuoteModel
@@ -92,7 +93,11 @@ import org.thoughtcrime.securesms.util.SessionMetaProtocol
 import java.security.MessageDigest
 import network.loki.messenger.libsession_util.util.Contact as LibSessionContact
 
-open class Storage(context: Context, helper: SQLCipherOpenHelper, private val configFactory: ConfigFactory, debouncer: WindowDebouncer) : Database(
+open class Storage(context: Context,
+                   helper: SQLCipherOpenHelper,
+                   private val configFactory: ConfigFactory,
+                   debouncer: WindowDebouncer,
+                   private val notifier: MessageNotifier) : Database(
     context,
     helper,
     debouncer,
@@ -547,7 +552,7 @@ open class Storage(context: Context, helper: SQLCipherOpenHelper, private val co
         toDeleteClosedGroups.forEach { deleteGroup ->
             val threadId = getThreadId(deleteGroup.encodedId)
             if (threadId != null) {
-                ClosedGroupManager.silentlyRemoveGroup(context,threadId,GroupUtil.doubleDecodeGroupId(deleteGroup.encodedId), deleteGroup.encodedId, localUserPublicKey, delete = true)
+                ClosedGroupManager.silentlyRemoveGroup(context,threadId,GroupUtil.doubleDecodeGroupId(deleteGroup.encodedId), deleteGroup.encodedId, localUserPublicKey, delete = true, notifier)
             }
         }
 
@@ -572,7 +577,7 @@ open class Storage(context: Context, helper: SQLCipherOpenHelper, private val co
             val existingThread = existingGroup?.let { getThreadId(existingGroup.encodedId) }
             if (existingGroup != null) {
                 if (group.priority == PRIORITY_HIDDEN && existingThread != null) {
-                    ClosedGroupManager.silentlyRemoveGroup(context,existingThread,GroupUtil.doubleDecodeGroupId(existingGroup.encodedId), existingGroup.encodedId, localUserPublicKey, delete = true)
+                    ClosedGroupManager.silentlyRemoveGroup(context,existingThread,GroupUtil.doubleDecodeGroupId(existingGroup.encodedId), existingGroup.encodedId, localUserPublicKey, delete = true, notifier)
                 } else if (existingThread == null) {
                     Log.w("Loki-DBG", "Existing group had no thread to hide")
                 } else {

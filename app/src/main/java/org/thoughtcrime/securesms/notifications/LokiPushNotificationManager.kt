@@ -13,7 +13,7 @@ import org.session.libsession.utilities.TextSecurePreferences
 import org.session.libsignal.utilities.JsonUtil
 import org.session.libsignal.utilities.Log
 import org.session.libsignal.utilities.retryIfNeeded
-import org.thoughtcrime.securesms.dependencies.DatabaseComponent
+import org.thoughtcrime.securesms.database.LokiAPIDatabase
 
 object LokiPushNotificationManager {
     private val maxRetryCount = 4
@@ -39,7 +39,7 @@ object LokiPushNotificationManager {
     }
 
     @JvmStatic
-    fun unregister(token: String, context: Context) {
+    fun unregister(token: String, context: Context, lokiAPIDatabase: LokiAPIDatabase) {
         val parameters = mapOf( "token" to token )
         val url = "$server/unregister"
         val body = RequestBody.create(MediaType.get("application/json"), JsonUtil.toJson(parameters))
@@ -57,7 +57,7 @@ object LokiPushNotificationManager {
             }
         }
         // Unsubscribe from all closed groups
-        val allClosedGroupPublicKeys = DatabaseComponent.get(context).lokiAPIDatabase().getAllClosedGroupPublicKeys()
+        val allClosedGroupPublicKeys = lokiAPIDatabase.getAllClosedGroupPublicKeys()
         val userPublicKey = TextSecurePreferences.getLocalNumber(context)!!
         allClosedGroupPublicKeys.iterator().forEach { closedGroup ->
             performOperation(context, ClosedGroupOperation.Unsubscribe, closedGroup, userPublicKey)
@@ -65,7 +65,7 @@ object LokiPushNotificationManager {
     }
 
     @JvmStatic
-    fun register(token: String, publicKey: String, context: Context, force: Boolean) {
+    fun register(token: String, publicKey: String, context: Context, force: Boolean, lokiAPIDatabase: LokiAPIDatabase) {
         val oldToken = TextSecurePreferences.getFCMToken(context)
         val lastUploadDate = TextSecurePreferences.getLastFCMUploadTime(context)
         if (!force && token == oldToken && System.currentTimeMillis() - lastUploadDate < tokenExpirationInterval) { return }
@@ -88,7 +88,7 @@ object LokiPushNotificationManager {
             }
         }
         // Subscribe to all closed groups
-        val allClosedGroupPublicKeys = DatabaseComponent.get(context).lokiAPIDatabase().getAllClosedGroupPublicKeys()
+        val allClosedGroupPublicKeys = lokiAPIDatabase.getAllClosedGroupPublicKeys()
         allClosedGroupPublicKeys.iterator().forEach { closedGroup ->
             performOperation(context, ClosedGroupOperation.Subscribe, closedGroup, publicKey)
         }

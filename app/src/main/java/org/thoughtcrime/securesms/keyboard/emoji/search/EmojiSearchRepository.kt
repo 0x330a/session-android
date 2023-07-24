@@ -4,13 +4,10 @@ import android.content.Context
 import android.net.Uri
 import io.reactivex.Single
 import io.reactivex.schedulers.Schedulers
-import org.session.libsession.utilities.TextSecurePreferences
 import org.session.libsession.utilities.concurrent.SignalExecutors
 import org.thoughtcrime.securesms.components.emoji.Emoji
 import org.thoughtcrime.securesms.components.emoji.EmojiPageModel
-import org.thoughtcrime.securesms.components.emoji.RecentEmojiPageModel
 import org.thoughtcrime.securesms.database.EmojiSearchDatabase
-import org.thoughtcrime.securesms.dependencies.DatabaseComponent
 import org.thoughtcrime.securesms.emoji.EmojiSource
 import java.util.function.Consumer
 
@@ -20,9 +17,7 @@ private const val EMOJI_SEARCH_LIMIT = 20
 
 private val NOT_PUNCTUATION = "[A-Za-z0-9 ]".toRegex()
 
-class EmojiSearchRepository(private val context: Context) {
-
-  private val emojiSearchDatabase: EmojiSearchDatabase = DatabaseComponent.get(context).emojiSearchDatabase()
+class EmojiSearchRepository(private val context: Context, private val emojiSearchDatabase: EmojiSearchDatabase) {
 
   fun submitQuery(query: String, limit: Int = EMOJI_SEARCH_LIMIT): Single<List<String>> {
     val result = if (query.length >= MINIMUM_INLINE_QUERY_THRESHOLD && NOT_PUNCTUATION.matches(query.substring(query.lastIndex))) {

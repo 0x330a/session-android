@@ -159,9 +159,10 @@ class PNModeActivity : BaseActionBarActivity() {
         }
 
         TextSecurePreferences.setIsUsingFCM(this, (selectedOptionView == binding.fcmOptionView))
-        val application = ApplicationContext.getInstance(this)
-        application.startPollingIfNeeded()
-        application.registerForFCMIfNeeded(true)
+        with (applicationContext as ApplicationContext) {
+            startPollingIfNeeded()
+            registerForFCMIfNeeded(true)
+        }
         val intent = Intent(this, HomeActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         intent.putExtra(HomeActivity.FROM_ONBOARDING, true)

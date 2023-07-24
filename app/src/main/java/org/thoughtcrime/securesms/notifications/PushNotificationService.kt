@@ -4,6 +4,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import dagger.hilt.android.AndroidEntryPoint
 import org.session.libsession.messaging.jobs.BatchMessageReceiveJob
 import org.session.libsession.messaging.jobs.JobQueue
 import org.session.libsession.messaging.jobs.MessageReceiveParameters
@@ -11,14 +12,20 @@ import org.session.libsession.messaging.utilities.MessageWrapper
 import org.session.libsession.utilities.TextSecurePreferences
 import org.session.libsignal.utilities.Base64
 import org.session.libsignal.utilities.Log
+import org.thoughtcrime.securesms.database.LokiAPIDatabase
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class PushNotificationService : FirebaseMessagingService() {
+
+    @Inject
+    lateinit var lokiAPIDatabase: LokiAPIDatabase
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
         Log.d("Loki", "New FCM token: $token.")
         val userPublicKey = TextSecurePreferences.getLocalNumber(this) ?: return
-        LokiPushNotificationManager.register(token, userPublicKey, this, false)
+        LokiPushNotificationManager.register(token, userPublicKey, this, false, lokiAPIDatabase)
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
@@ -37,7 +44,7 @@ class PushNotificationService : FirebaseMessagingService() {
             Log.d("Loki", "Failed to decode data for message.")
             val builder = NotificationCompat.Builder(this, NotificationChannels.OTHER)
                 .setSmallIcon(network.loki.messenger.R.drawable.ic_notification)
-                .setColor(this.getResources().getColor(network.loki.messenger.R.color.textsecure_primary))
+                .setColor(this.resources.getColor(network.loki.messenger.R.color.textsecure_primary))
                 .setContentTitle("Session")
                 .setContentText("You've got a new message.")
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -53,6 +60,6 @@ class PushNotificationService : FirebaseMessagingService() {
         super.onDeletedMessages()
         val token = TextSecurePreferences.getFCMToken(this)!!
         val userPublicKey = TextSecurePreferences.getLocalNumber(this) ?: return
-        LokiPushNotificationManager.register(token, userPublicKey, this, true)
+        LokiPushNotificationManager.register(token, userPublicKey, this, true, lokiAPIDatabase)
     }
 }

@@ -30,27 +30,45 @@ import org.session.libsession.messaging.messages.signal.OutgoingMediaMessage;
 import org.session.libsession.messaging.messages.signal.OutgoingTextMessage;
 import org.session.libsession.messaging.messages.visible.VisibleMessage;
 import org.session.libsession.messaging.sending_receiving.MessageSender;
+import org.session.libsession.messaging.sending_receiving.notifications.MessageNotifier;
 import org.session.libsession.utilities.Address;
 import org.session.libsession.utilities.recipients.Recipient;
 import org.session.libsignal.utilities.Log;
-import org.thoughtcrime.securesms.ApplicationContext;
 import org.thoughtcrime.securesms.database.MessagingDatabase.MarkedMessageInfo;
+import org.thoughtcrime.securesms.database.MmsDatabase;
+import org.thoughtcrime.securesms.database.SmsDatabase;
 import org.thoughtcrime.securesms.database.ThreadDatabase;
-import org.thoughtcrime.securesms.dependencies.DatabaseComponent;
 import org.thoughtcrime.securesms.mms.MmsException;
 
 import java.util.Collections;
 import java.util.List;
 
+import javax.inject.Inject;
+
+import dagger.hilt.android.AndroidEntryPoint;
+
 /**
  * Get the response text from the Wearable Device and sends an message as a reply
  */
+@AndroidEntryPoint
 public class RemoteReplyReceiver extends BroadcastReceiver {
 
   public static final String TAG           = RemoteReplyReceiver.class.getSimpleName();
   public static final String REPLY_ACTION  = "network.loki.securesms.notifications.WEAR_REPLY";
   public static final String ADDRESS_EXTRA = "address";
   public static final String REPLY_METHOD  = "reply_method";
+
+  @Inject
+  public ThreadDatabase threadDb;
+  @Inject
+  public MmsDatabase mmsDb;
+  @Inject
+  public SmsDatabase smsDb;
+  @Inject
+  public MessageNotifier messageNotifier;
+  @Inject
+  public MarkReadReceiver markReadReceiver;
+
 
   @SuppressLint("StaticFieldLeak")
   @Override
@@ -73,8 +91,7 @@ public class RemoteReplyReceiver extends BroadcastReceiver {
         @Override
         protected Void doInBackground(Void... params) {
           Recipient recipient = Recipient.from(context, address, false);
-          ThreadDatabase threadDatabase = DatabaseComponent.get(context).threadDatabase();
-          long threadId = threadDatabase.getOrCreateThreadIdFor(recipient);
+          long threadId = threadDb.getOrCreateThreadIdFor(recipient);
           VisibleMessage message = new VisibleMessage();
           message.setSentTimestamp(System.currentTimeMillis());
           message.setText(responseText.toString());
@@ -83,7 +100,7 @@ public class RemoteReplyReceiver extends BroadcastReceiver {
             case GroupMessage: {
               OutgoingMediaMessage reply = OutgoingMediaMessage.from(message, recipient, Collections.emptyList(), null, null);
               try {
-                DatabaseComponent.get(context).mmsDatabase().insertMessageOutbox(reply, threadId, false, null, true);
+                mmsDb.insertMessageOutbox(reply, threadId, false, null, true);
                 MessageSender.send(message, address);
               } catch (MmsException e) {
                 Log.w(TAG, e);
@@ -92,7 +109,7 @@ public class RemoteReplyReceiver extends BroadcastReceiver {
             }
             case SecureMessage: {
               OutgoingTextMessage reply = OutgoingTextMessage.from(message, recipient);
-              DatabaseComponent.get(context).smsDatabase().insertMessageOutbox(threadId, reply, false, System.currentTimeMillis(), null, true);
+              smsDb.insertMessageOutbox(threadId, reply, false, System.currentTimeMillis(), null, true);
               MessageSender.send(message, address);
               break;
             }
@@ -100,10 +117,10 @@ public class RemoteReplyReceiver extends BroadcastReceiver {
               throw new AssertionError("Unknown Reply method");
           }
 
-          List<MarkedMessageInfo> messageIds = threadDatabase.setRead(threadId, true);
+          List<MarkedMessageInfo> messageIds = threadDb.setRead(threadId, true);
 
-          ApplicationContext.getInstance(context).messageNotifier.updateNotification(context);
-          MarkReadReceiver.process(context, messageIds);
+          messageNotifier.updateNotification(context);
+          markReadReceiver.process(context, messageIds);
 
           return null;
         }

@@ -16,7 +16,12 @@ import org.session.libsignal.utilities.Log
 import org.session.libsignal.utilities.guava.Optional
 import org.session.libsignal.utilities.hexEncodedPublicKey
 import org.thoughtcrime.securesms.crypto.KeyPairUtilities
-import org.thoughtcrime.securesms.dependencies.DatabaseComponent
+import org.thoughtcrime.securesms.database.LokiThreadDatabase
+import org.thoughtcrime.securesms.database.RecipientDatabase
+import org.thoughtcrime.securesms.database.SessionContactDatabase
+import org.thoughtcrime.securesms.database.SmsDatabase
+import org.thoughtcrime.securesms.database.Storage
+import org.thoughtcrime.securesms.database.ThreadDatabase
 import org.thoughtcrime.securesms.groups.GroupManager
 import java.security.SecureRandom
 import kotlin.random.asKotlinRandom
@@ -26,15 +31,17 @@ object MockDataGenerator {
     private var hasStartedGenerationThisRun = false
 
     // FIXME: Update this to run in a transaction instead of individual db writes (should drastically speed it up)
-    fun generateMockData(context: Context) {
+    fun generateMockData(
+        context: Context,
+        storage: Storage,
+        threadDb: ThreadDatabase,
+        lokiThreadDb: LokiThreadDatabase,
+        contactDb: SessionContactDatabase,
+        recipientDb: RecipientDatabase,
+        smsDb: SmsDatabase,
+    ) {
         // Don't re-generate the mock data if it already exists
         val mockDataExistsRecipient = Recipient.from(context, Address.fromSerialized("MockDatabaseThread"), false)
-        val storage = MessagingModuleConfiguration.shared.storage
-        val threadDb = DatabaseComponent.get(context).threadDatabase()
-        val lokiThreadDB = DatabaseComponent.get(context).lokiThreadDatabase()
-        val contactDb = DatabaseComponent.get(context).sessionContactDatabase()
-        val recipientDb = DatabaseComponent.get(context).recipientDatabase()
-        val smsDb = DatabaseComponent.get(context).smsDatabase()
 
         if (hasStartedGenerationThisRun || threadDb.getThreadIdIfExistsFor(mockDataExistsRecipient) != -1L) {
             hasStartedGenerationThisRun = true
@@ -366,7 +373,7 @@ object MockDataGenerator {
                     )
                 )
                 storage.setUserCount(roomName, serverName, numGroupMembers)
-                lokiThreadDB.setOpenGroupChat(OpenGroup(server = serverName, room = roomName, publicKey = randomGroupPublicKey, name = roomName, imageId = null, canWrite = true, infoUpdates = 0), threadId)
+                lokiThreadDb.setOpenGroupChat(OpenGroup(server = serverName, room = roomName, publicKey = randomGroupPublicKey, name = roomName, imageId = null, canWrite = true, infoUpdates = 0), threadId)
 
                 // Generate the message history (Note: Unapproved message requests will only include incoming messages)
                 logProgress("Open Group Thread $threadIndex", "Generate $numMessages Messages")

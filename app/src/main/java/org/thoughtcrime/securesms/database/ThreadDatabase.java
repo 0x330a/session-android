@@ -35,6 +35,7 @@ import com.annimon.stream.Stream;
 import net.zetetic.database.sqlcipher.SQLiteDatabase;
 
 import org.jetbrains.annotations.NotNull;
+import org.session.libsession.messaging.sending_receiving.notifications.MessageNotifier;
 import org.session.libsession.snode.SnodeAPI;
 import org.session.libsession.utilities.Address;
 import org.session.libsession.utilities.Contact;
@@ -50,7 +51,6 @@ import org.session.libsignal.utilities.IdPrefix;
 import org.session.libsignal.utilities.Log;
 import org.session.libsignal.utilities.Pair;
 import org.session.libsignal.utilities.guava.Optional;
-import org.thoughtcrime.securesms.ApplicationContext;
 import org.thoughtcrime.securesms.contactshare.ContactUtil;
 import org.thoughtcrime.securesms.database.MessagingDatabase.MarkedMessageInfo;
 import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper;
@@ -58,7 +58,6 @@ import org.thoughtcrime.securesms.database.model.MediaMmsMessageRecord;
 import org.thoughtcrime.securesms.database.model.MessageRecord;
 import org.thoughtcrime.securesms.database.model.MmsMessageRecord;
 import org.thoughtcrime.securesms.database.model.ThreadRecord;
-import org.thoughtcrime.securesms.dependencies.DatabaseComponent;
 import org.thoughtcrime.securesms.mms.Slide;
 import org.thoughtcrime.securesms.mms.SlideDeck;
 import org.thoughtcrime.securesms.notifications.MarkReadReceiver;
@@ -147,9 +146,40 @@ public class ThreadDatabase extends Database {
   }
 
   private ConversationThreadUpdateListener updateListener;
+  private final MessageNotifier notifier;
+  private final SmsDatabase smsDb;
+  private final MmsDatabase mmsDb;
+  private final MmsSmsDatabase mmsSmsDb;
+  private final RecipientDatabase recipientDb;
+  private final DraftDatabase draftDb;
+  private final LokiMessageDatabase lokiMessageDb;
+  private final GroupDatabase groupDb;
+  private final MarkReadReceiver markReadReceiver;
 
-  public ThreadDatabase(Context context, SQLCipherOpenHelper databaseHelper, WindowDebouncer debouncer) {
+  public ThreadDatabase(
+          Context context,
+          SQLCipherOpenHelper databaseHelper,
+          WindowDebouncer debouncer,
+          MessageNotifier notifier,
+          SmsDatabase smsDb,
+          MmsDatabase mmsDb,
+          MmsSmsDatabase mmsSmsDb,
+          RecipientDatabase recipientDb,
+          DraftDatabase draftDb,
+          LokiMessageDatabase lokiMessageDb,
+          GroupDatabase groupDb,
+          MarkReadReceiver markReadReceiver
+  ) {
     super(context, databaseHelper, debouncer);
+    this.notifier = notifier;
+    this.smsDb = smsDb;
+    this.mmsDb = mmsDb;
+    this.mmsSmsDb = mmsSmsDb;
+    this.recipientDb = recipientDb;
+    this.draftDb = draftDb;
+    this.lokiMessageDb = lokiMessageDb;
+    this.groupDb = groupDb;
+    this.markReadReceiver = markReadReceiver;
   }
 
   public void setUpdateListener(ConversationThreadUpdateListener updateListener) {
@@ -280,7 +310,7 @@ public class ThreadDatabase extends Database {
     Cursor cursor = null;
 
     try {
-      cursor = DatabaseComponent.get(context).mmsSmsDatabase().getConversation(threadId, true);
+      cursor = mmsSmsDb.getConversation(threadId, true);
 
       if (cursor != null && length > 0 && cursor.getCount() > length) {
         Log.w("ThreadDatabase", "Cursor count is greater than length!");
@@ -290,8 +320,8 @@ public class ThreadDatabase extends Database {
 
         Log.i("ThreadDatabase", "Cut off tweet date: " + lastTweetDate);
 
-        DatabaseComponent.get(context).smsDatabase().deleteMessagesInThreadBeforeDate(threadId, lastTweetDate);
-        DatabaseComponent.get(context).mmsDatabase().deleteMessagesInThreadBeforeDate(threadId, lastTweetDate);
+        smsDb.deleteMessagesInThreadBeforeDate(threadId, lastTweetDate);
+        mmsDb.deleteMessagesInThreadBeforeDate(threadId, lastTweetDate);
 
         update(threadId, false, true);
         notifyConversationListeners(threadId);
@@ -304,16 +334,16 @@ public class ThreadDatabase extends Database {
 
   public void trimThreadBefore(long threadId, long timestamp) {
     Log.i("ThreadDatabase", "Trimming thread: " + threadId + " before :"+timestamp);
-    DatabaseComponent.get(context).smsDatabase().deleteMessagesInThreadBeforeDate(threadId, timestamp);
-    DatabaseComponent.get(context).mmsDatabase().deleteMessagesInThreadBeforeDate(threadId, timestamp);
+    smsDb.deleteMessagesInThreadBeforeDate(threadId, timestamp);
+    mmsDb.deleteMessagesInThreadBeforeDate(threadId, timestamp);
     update(threadId, false, true);
     notifyConversationListeners(threadId);
   }
 
   public List<MarkedMessageInfo> setRead(long threadId, long lastReadTime) {
 
-    final List<MarkedMessageInfo> smsRecords = DatabaseComponent.get(context).smsDatabase().setMessagesRead(threadId, lastReadTime);
-    final List<MarkedMessageInfo> mmsRecords = DatabaseComponent.get(context).mmsDatabase().setMessagesRead(threadId, lastReadTime);
+    final List<MarkedMessageInfo> smsRecords = smsDb.setMessagesRead(threadId, lastReadTime);
+    final List<MarkedMessageInfo> mmsRecords = mmsDb.setMessagesRead(threadId, lastReadTime);
 
     if (smsRecords.isEmpty() && mmsRecords.isEmpty()) {
       return Collections.emptyList();
@@ -347,8 +377,8 @@ public class ThreadDatabase extends Database {
     SQLiteDatabase db = databaseHelper.getWritableDatabase();
     db.update(TABLE_NAME, contentValues, ID_WHERE, new String[] {threadId+""});
 
-    final List<MarkedMessageInfo> smsRecords = DatabaseComponent.get(context).smsDatabase().setMessagesRead(threadId);
-    final List<MarkedMessageInfo> mmsRecords = DatabaseComponent.get(context).mmsDatabase().setMessagesRead(threadId);
+    final List<MarkedMessageInfo> smsRecords = smsDb.setMessagesRead(threadId);
+    final List<MarkedMessageInfo> mmsRecords = mmsDb.setMessagesRead(threadId);
 
     notifyConversationListListeners();
 
@@ -547,7 +577,7 @@ public class ThreadDatabase extends Database {
    */
   public boolean setLastSeen(long threadId, long timestamp) {
     // edge case where we set the last seen time for a conversation before it loads messages (joining community for example)
-    MmsSmsDatabase mmsSmsDatabase = DatabaseComponent.get(context).mmsSmsDatabase();
+    MmsSmsDatabase mmsSmsDatabase = mmsSmsDb;
     Recipient forThreadId = getRecipientForThreadId(threadId);
     if (mmsSmsDatabase.getConversationCount(threadId) <= 0 && forThreadId != null && forThreadId.isOpenGroupRecipient()) return false;
 
@@ -630,10 +660,10 @@ public class ThreadDatabase extends Database {
   }
 
   public void deleteConversation(long threadId) {
-    DatabaseComponent.get(context).smsDatabase().deleteThread(threadId);
-    DatabaseComponent.get(context).mmsDatabase().deleteThread(threadId);
-    DatabaseComponent.get(context).draftDatabase().clearDrafts(threadId);
-    DatabaseComponent.get(context).lokiMessageDatabase().deleteThread(threadId);
+    smsDb.deleteThread(threadId);
+    mmsDb.deleteThread(threadId);
+    draftDb.clearDrafts(threadId);
+    lokiMessageDb.deleteThread(threadId);
     deleteThread(threadId);
     notifyConversationListeners(threadId);
     notifyConversationListListeners();
@@ -691,7 +721,7 @@ public class ThreadDatabase extends Database {
       if (cursor != null && cursor.moveToFirst()) {
         threadId = cursor.getLong(cursor.getColumnIndexOrThrow(ID));
       } else {
-        DatabaseComponent.get(context).recipientDatabase().setProfileSharing(recipient, true);
+        recipientDb.setProfileSharing(recipient, true);
         threadId = createThreadForRecipient(recipient.getAddress(), recipient.isGroupRecipient(), distributionType);
         created = true;
       }
@@ -741,7 +771,7 @@ public class ThreadDatabase extends Database {
   }
 
   public boolean update(long threadId, boolean unarchive, boolean shouldDeleteOnEmpty) {
-    MmsSmsDatabase mmsSmsDatabase = DatabaseComponent.get(context).mmsSmsDatabase();
+    MmsSmsDatabase mmsSmsDatabase = mmsSmsDb;
     long count                    = mmsSmsDatabase.getConversationCount(threadId);
 
     boolean shouldDeleteEmptyThread = shouldDeleteOnEmpty && deleteThreadOnEmpty(threadId);
@@ -814,17 +844,17 @@ public class ThreadDatabase extends Database {
    * @return true if we have set the last seen for the thread, false if there were no messages in the thread
    */
   public boolean markAllAsRead(long threadId, boolean isGroupRecipient, long lastSeenTime, boolean force) {
-    MmsSmsDatabase mmsSmsDatabase = DatabaseComponent.get(context).mmsSmsDatabase();
+    MmsSmsDatabase mmsSmsDatabase = mmsSmsDb;
     if (mmsSmsDatabase.getConversationCount(threadId) <= 0 && !force) return false;
     List<MarkedMessageInfo> messages = setRead(threadId, lastSeenTime);
     if (isGroupRecipient) {
       for (MarkedMessageInfo message: messages) {
-        MarkReadReceiver.scheduleDeletion(context, message.getExpirationInfo());
+        markReadReceiver.scheduleDeletion(message.getExpirationInfo());
       }
     } else {
-      MarkReadReceiver.process(context, messages);
+      markReadReceiver.process(context, messages);
     }
-    ApplicationContext.getInstance(context).messageNotifier.updateNotification(context, threadId);
+    notifier.updateNotification(context, threadId);
     return setLastSeen(threadId, lastSeenTime);
   }
 
@@ -925,8 +955,8 @@ public class ThreadDatabase extends Database {
       Optional<GroupRecord>       groupRecord;
 
       if (distributionType != DistributionTypes.ARCHIVE && distributionType != DistributionTypes.INBOX_ZERO) {
-        settings    = DatabaseComponent.get(context).recipientDatabase().getRecipientSettings(cursor);
-        groupRecord = DatabaseComponent.get(context).groupDatabase().getGroup(cursor);
+        settings    = recipientDb.getRecipientSettings(cursor);
+        groupRecord = groupDb.getGroup(cursor);
       } else {
         settings    = Optional.absent();
         groupRecord = Optional.absent();

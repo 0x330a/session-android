@@ -2,16 +2,17 @@ package org.thoughtcrime.securesms.contacts
 
 import android.content.Context
 import network.loki.messenger.R
-import org.thoughtcrime.securesms.util.ContactUtilities
 import org.session.libsession.utilities.recipients.Recipient
+import org.thoughtcrime.securesms.database.ThreadDatabase
 import org.thoughtcrime.securesms.util.AsyncLoader
+import org.thoughtcrime.securesms.util.ContactUtilities
 
 sealed class ContactSelectionListItem {
     class Header(val name: String) : ContactSelectionListItem()
     class Contact(val recipient: Recipient) : ContactSelectionListItem()
 }
 
-class ContactSelectionListLoader(context: Context, val mode: Int, val filter: String?) : AsyncLoader<List<ContactSelectionListItem>>(context) {
+class ContactSelectionListLoader(context: Context, val mode: Int, val filter: String?, val threadDatabase: ThreadDatabase) : AsyncLoader<List<ContactSelectionListItem>>(context) {
 
     object DisplayMode {
         const val FLAG_CONTACTS = 1
@@ -25,7 +26,7 @@ class ContactSelectionListLoader(context: Context, val mode: Int, val filter: St
     }
 
     override fun loadInBackground(): List<ContactSelectionListItem> {
-        val contacts = ContactUtilities.getAllContacts(context).filter {
+        val contacts = ContactUtilities.getAllContacts(threadDatabase).filter {
             if (filter.isNullOrEmpty()) return@filter true
             it.toShortString().contains(filter.trim(), true) || it.address.serialize().contains(filter.trim(), true)
         }.sortedBy {

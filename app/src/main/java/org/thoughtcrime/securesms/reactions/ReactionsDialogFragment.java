@@ -22,14 +22,19 @@ import com.google.android.material.tabs.TabLayoutMediator;
 
 import org.session.libsession.utilities.ThemeUtil;
 import org.thoughtcrime.securesms.components.emoji.EmojiImageView;
+import org.thoughtcrime.securesms.database.ReactionDatabase;
 import org.thoughtcrime.securesms.database.model.MessageId;
 import org.thoughtcrime.securesms.util.LifecycleDisposable;
 import org.thoughtcrime.securesms.util.NumberUtil;
 
 import java.util.Objects;
 
+import javax.inject.Inject;
+
+import dagger.hilt.android.AndroidEntryPoint;
 import network.loki.messenger.R;
 
+@AndroidEntryPoint
 public final class ReactionsDialogFragment extends BottomSheetDialogFragment implements ReactionViewPagerAdapter.Listener {
 
   private static final String ARGS_MESSAGE_ID = "reactions.args.message.id";
@@ -39,6 +44,7 @@ public final class ReactionsDialogFragment extends BottomSheetDialogFragment imp
   private ViewPager2                recipientPagerView;
   private ReactionViewPagerAdapter  recipientsAdapter;
   private Callback                  callback;
+  @Inject ReactionDatabase          reactionDb;
 
   private final LifecycleDisposable disposables = new LifecycleDisposable();
 
@@ -91,7 +97,7 @@ public final class ReactionsDialogFragment extends BottomSheetDialogFragment imp
     MessageId messageId = new MessageId(requireArguments().getLong(ARGS_MESSAGE_ID), requireArguments().getBoolean(ARGS_IS_MMS));
     recipientsAdapter.setIsUserModerator(requireArguments().getBoolean(ARGS_IS_MODERATOR));
     recipientsAdapter.setMessageId(messageId);
-    setUpViewModel(messageId);
+    setUpViewModel(messageId, reactionDb);
   }
 
   private void setUpTabMediator(@Nullable Bundle savedInstanceState) {
@@ -157,8 +163,8 @@ public final class ReactionsDialogFragment extends BottomSheetDialogFragment imp
     recipientPagerView.setAdapter(recipientsAdapter);
   }
 
-  private void setUpViewModel(@NonNull MessageId messageId) {
-    ReactionsViewModel.Factory factory = new ReactionsViewModel.Factory(messageId);
+  private void setUpViewModel(@NonNull MessageId messageId, @NonNull ReactionDatabase reactionDb) {
+    ReactionsViewModel.Factory factory = new ReactionsViewModel.Factory(messageId, reactionDb);
 
     ReactionsViewModel viewModel = new ViewModelProvider(this, factory).get(ReactionsViewModel.class);
 

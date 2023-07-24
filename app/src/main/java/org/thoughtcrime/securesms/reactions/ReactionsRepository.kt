@@ -7,11 +7,11 @@ import org.session.libsession.messaging.MessagingModuleConfiguration
 import org.session.libsession.utilities.Address
 import org.session.libsession.utilities.recipients.Recipient
 import org.thoughtcrime.securesms.components.emoji.EmojiUtil
+import org.thoughtcrime.securesms.database.ReactionDatabase
 import org.thoughtcrime.securesms.database.model.MessageId
 import org.thoughtcrime.securesms.database.model.ReactionRecord
-import org.thoughtcrime.securesms.dependencies.DatabaseComponent
 
-class ReactionsRepository {
+class ReactionsRepository(private val reactionDatabase: ReactionDatabase) {
 
     fun getReactions(messageId: MessageId): Observable<List<ReactionDetails>> {
         return Observable.create { emitter: ObservableEmitter<List<ReactionDetails>> ->
@@ -21,7 +21,7 @@ class ReactionsRepository {
 
     private fun fetchReactionDetails(messageId: MessageId): List<ReactionDetails> {
         val context = MessagingModuleConfiguration.shared.context
-        val reactions: List<ReactionRecord> = DatabaseComponent.get(context).reactionDatabase().getReactions(messageId)
+        val reactions: List<ReactionRecord> = reactionDatabase.getReactions(messageId)
 
         return reactions.map { reaction ->
             ReactionDetails(

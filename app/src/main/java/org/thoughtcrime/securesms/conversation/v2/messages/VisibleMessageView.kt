@@ -35,7 +35,6 @@ import org.session.libsession.utilities.ViewUtil
 import org.session.libsession.utilities.getColorFromAttr
 import org.session.libsignal.utilities.IdPrefix
 import org.session.libsignal.utilities.ThreadUtils
-import org.thoughtcrime.securesms.ApplicationContext
 import org.thoughtcrime.securesms.conversation.v2.ConversationActivityV2
 import org.thoughtcrime.securesms.database.LokiAPIDatabase
 import org.thoughtcrime.securesms.database.LokiThreadDatabase
@@ -47,6 +46,7 @@ import org.thoughtcrime.securesms.database.model.MessageRecord
 import org.thoughtcrime.securesms.groups.OpenGroupManager
 import org.thoughtcrime.securesms.home.UserDetailsBottomSheet
 import org.thoughtcrime.securesms.mms.GlideRequests
+import org.thoughtcrime.securesms.service.ExpiringMessageManager
 import org.thoughtcrime.securesms.util.DateUtils
 import org.thoughtcrime.securesms.util.disableClipping
 import org.thoughtcrime.securesms.util.toDp
@@ -68,6 +68,7 @@ class VisibleMessageView : LinearLayout {
     @Inject lateinit var mmsSmsDb: MmsSmsDatabase
     @Inject lateinit var smsDb: SmsDatabase
     @Inject lateinit var mmsDb: MmsDatabase
+    @Inject lateinit var expiringMessageManager: ExpiringMessageManager
 
     private val binding by lazy { ViewVisibleMessageBinding.bind(this) }
     private val screenWidth = Resources.getSystem().displayMetrics.widthPixels
@@ -358,17 +359,16 @@ class VisibleMessageView : LinearLayout {
                 binding.expirationTimerView.setExpirationTime(message.expireStarted, message.expiresIn)
                 binding.expirationTimerView.startAnimation()
                 if (message.expireStarted + message.expiresIn <= SnodeAPI.nowWithOffset) {
-                    ApplicationContext.getInstance(context).expiringMessageManager.checkSchedule()
+                    expiringMessageManager.checkSchedule()
                 }
             } else if (!message.isMediaPending) {
                 binding.expirationTimerView.setPercentComplete(0.0f)
                 binding.expirationTimerView.stopAnimation()
                 ThreadUtils.queue {
-                    val expirationManager = ApplicationContext.getInstance(context).expiringMessageManager
                     val id = message.getId()
                     val mms = message.isMms
                     if (mms) mmsDb.markExpireStarted(id) else smsDb.markExpireStarted(id)
-                    expirationManager.scheduleDeletion(id, mms, message.expiresIn)
+                    expiringMessageManager.scheduleDeletion(id, mms, message.expiresIn)
                 }
             } else {
                 binding.expirationTimerView.stopAnimation()

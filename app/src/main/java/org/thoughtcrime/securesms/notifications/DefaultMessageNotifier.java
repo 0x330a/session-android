@@ -53,7 +53,6 @@ import org.session.libsession.utilities.recipients.Recipient;
 import org.session.libsignal.utilities.IdPrefix;
 import org.session.libsignal.utilities.Log;
 import org.session.libsignal.utilities.Util;
-import org.thoughtcrime.securesms.ApplicationContext;
 import org.thoughtcrime.securesms.contactshare.ContactUtil;
 import org.thoughtcrime.securesms.conversation.v2.ConversationActivityV2;
 import org.thoughtcrime.securesms.conversation.v2.utilities.MentionManagerUtilities;
@@ -68,7 +67,6 @@ import org.thoughtcrime.securesms.database.model.MessageRecord;
 import org.thoughtcrime.securesms.database.model.MmsMessageRecord;
 import org.thoughtcrime.securesms.database.model.Quote;
 import org.thoughtcrime.securesms.database.model.ReactionRecord;
-import org.thoughtcrime.securesms.dependencies.DatabaseComponent;
 import org.thoughtcrime.securesms.mms.SlideDeck;
 import org.thoughtcrime.securesms.service.KeyCachingService;
 import org.thoughtcrime.securesms.util.SessionMetaProtocol;
@@ -86,6 +84,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import javax.inject.Inject;
+
+import dagger.hilt.android.AndroidEntryPoint;
 import me.leolin.shortcutbadger.ShortcutBadger;
 import network.loki.messenger.R;
 
@@ -115,6 +116,17 @@ public class DefaultMessageNotifier implements MessageNotifier {
   private volatile static       long               lastDesktopActivityTimestamp = -1;
   private volatile static       long               lastAudibleNotification      = -1;
   private          static final CancelableExecutor executor                     = new CancelableExecutor();
+
+  private volatile boolean isAppVisible = false;
+  private final ThreadDatabase threadDb;
+  private final MmsSmsDatabase mmsSmsDb;
+  private final LokiThreadDatabase lokiThreadDb;
+
+  public DefaultMessageNotifier(ThreadDatabase threadDb, MmsSmsDatabase mmsSmsDb, LokiThreadDatabase lokiThreadDb) {
+    this.threadDb = threadDb;
+    this.mmsSmsDb = mmsSmsDb;
+    this.lokiThreadDb = lokiThreadDb;
+  }
 
   @Override
   public void setVisibleThread(long threadId) {
@@ -223,7 +235,7 @@ public class DefaultMessageNotifier implements MessageNotifier {
   {
     if (System.currentTimeMillis() - lastDesktopActivityTimestamp < DESKTOP_ACTIVITY_PERIOD) {
       Log.i(TAG, "Scheduling delayed notification...");
-      executor.execute(new DelayedNotification(context, threadId));
+      executor.execute(new DelayedNotification(context, threadId, this));
     } else {
       updateNotification(context, threadId, true);
     }
@@ -234,7 +246,7 @@ public class DefaultMessageNotifier implements MessageNotifier {
   {
     boolean    isVisible  = visibleThread == threadId;
 
-    ThreadDatabase threads    = DatabaseComponent.get(context).threadDatabase();
+    ThreadDatabase threads    = threadDb;
     Recipient      recipient = threads.getRecipientForThreadId(threadId);
 
     if (recipient != null && !recipient.isGroupRecipient() && threads.getMessageCount(threadId) == 1 &&
@@ -270,7 +282,7 @@ public class DefaultMessageNotifier implements MessageNotifier {
     Cursor pushCursor  = null;
 
     try {
-      telcoCursor = DatabaseComponent.get(context).mmsSmsDatabase().getUnread(); // TODO: add a notification specific lighter query here
+      telcoCursor = mmsSmsDb.getUnread(); // TODO: add a notification specific lighter query here
 
       if ((telcoCursor == null || telcoCursor.isAfterLast()) || !TextSecurePreferences.hasSeenWelcomeScreen(context))
       {
@@ -458,8 +470,8 @@ public class DefaultMessageNotifier implements MessageNotifier {
                                                        @NonNull  Cursor cursor)
   {
     NotificationState     notificationState = new NotificationState();
-    MmsSmsDatabase.Reader reader            = DatabaseComponent.get(context).mmsSmsDatabase().readerFor(cursor);
-    ThreadDatabase        threadDatabase    = DatabaseComponent.get(context).threadDatabase();
+    MmsSmsDatabase.Reader reader            = mmsSmsDb.readerFor(cursor);
+    ThreadDatabase        threadDatabase    = threadDb;
 
     MessageRecord record;
     Map<Long, String> cache = new HashMap<Long, String>();
@@ -549,8 +561,7 @@ public class DefaultMessageNotifier implements MessageNotifier {
   }
 
   private @Nullable String generateBlindedId(long threadId, Context context) {
-    LokiThreadDatabase lokiThreadDatabase   = DatabaseComponent.get(context).lokiThreadDatabase();
-    OpenGroup openGroup = lokiThreadDatabase.getOpenGroupChat(threadId);
+    OpenGroup openGroup = lokiThreadDb.getOpenGroupChat(threadId);
     KeyPair edKeyPair = KeyPairUtilities.INSTANCE.getUserED25519KeyPair(context);
     if (openGroup != null && edKeyPair != null) {
       KeyPair blindedKeyPair = SodiumUtilities.blindedKeyPair(openGroup.getPublicKey(), edKeyPair);
@@ -595,9 +606,22 @@ public class DefaultMessageNotifier implements MessageNotifier {
     alarmManager.cancel(pendingIntent);
   }
 
+  @Override
+  public void setAppVisible(boolean isVisible) {
+    isAppVisible = isVisible;
+  }
+
+  @Override
+  public boolean getAppVisible() {
+    return isAppVisible;
+  }
+
+  @AndroidEntryPoint
   public static class ReminderReceiver extends BroadcastReceiver {
 
     public static final String REMINDER_ACTION = "network.loki.securesms.MessageNotifier.REMINDER_ACTION";
+
+    @Inject public MessageNotifier messageNotifier;
 
     @SuppressLint("StaticFieldLeak")
     @Override
@@ -606,7 +630,7 @@ public class DefaultMessageNotifier implements MessageNotifier {
         @Override
         protected Void doInBackground(Void... params) {
           int reminderCount = intent.getIntExtra("reminder_count", 0);
-          ApplicationContext.getInstance(context).messageNotifier.updateNotification(context, true, reminderCount + 1);
+          messageNotifier.updateNotification(context, true, reminderCount + 1);
 
           return null;
         }
@@ -623,11 +647,13 @@ public class DefaultMessageNotifier implements MessageNotifier {
     private final Context context;
     private final long    threadId;
     private final long    delayUntil;
+    private final MessageNotifier messageNotifier;
 
-    private DelayedNotification(Context context, long threadId) {
+    private DelayedNotification(Context context, long threadId, MessageNotifier messageNotifier) {
       this.context    = context;
       this.threadId   = threadId;
       this.delayUntil = System.currentTimeMillis() + DELAY;
+      this.messageNotifier = messageNotifier;
     }
 
     @Override
@@ -641,8 +667,8 @@ public class DefaultMessageNotifier implements MessageNotifier {
 
       if (!canceled.get()) {
         Log.i(TAG, "Not canceled, notifying...");
-        ApplicationContext.getInstance(context).messageNotifier.updateNotification(context, threadId, true);
-        ApplicationContext.getInstance(context).messageNotifier.cancelDelayedNotifications();
+        messageNotifier.updateNotification(context, threadId, true);
+        messageNotifier.cancelDelayedNotifications();
       } else {
         Log.w(TAG, "Canceled, not notifying...");
       }
@@ -663,14 +689,11 @@ public class DefaultMessageNotifier implements MessageNotifier {
         tasks.add(runnable);
       }
 
-      Runnable wrapper = new Runnable() {
-        @Override
-        public void run() {
-          runnable.run();
+      Runnable wrapper = () -> {
+        runnable.run();
 
-          synchronized (tasks) {
-            tasks.remove(runnable);
-          }
+        synchronized (tasks) {
+          tasks.remove(runnable);
         }
       };
 

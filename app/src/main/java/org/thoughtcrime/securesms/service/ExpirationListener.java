@@ -6,13 +6,19 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 
-import org.thoughtcrime.securesms.ApplicationContext;
+import javax.inject.Inject;
 
+import dagger.hilt.android.AndroidEntryPoint;
+
+@AndroidEntryPoint
 public class ExpirationListener extends BroadcastReceiver {
+
+  @Inject
+  public ExpiringMessageManager expiringMessageManager;
 
   @Override
   public void onReceive(Context context, Intent intent) {
-    ApplicationContext.getInstance(context).getExpiringMessageManager().checkSchedule();
+    expiringMessageManager.checkSchedule();
   }
 
   public static void setAlarm(Context context, long waitTimeMillis) {

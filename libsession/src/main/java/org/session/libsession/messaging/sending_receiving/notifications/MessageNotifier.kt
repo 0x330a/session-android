@@ -4,6 +4,8 @@ import android.content.Context
 import org.session.libsession.utilities.recipients.Recipient
 
 interface MessageNotifier {
+    fun setAppVisible(isVisible: Boolean)
+    fun getAppVisible(): Boolean
     fun setHomeScreenVisible(isVisible: Boolean)
     fun setVisibleThread(threadId: Long)
     fun setLastDesktopActivityTimestamp(timestamp: Long)

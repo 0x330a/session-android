@@ -35,7 +35,7 @@ class MessageRequestsActivity : PassphraseRequiredActionBarActivity(), Conversat
     private val viewModel: MessageRequestsViewModel by viewModels()
 
     private val adapter: MessageRequestsAdapter by lazy {
-        MessageRequestsAdapter(context = this, cursor = threadDb.unapprovedConversationList, listener = this)
+        MessageRequestsAdapter(context = this, cursor = threadDb.unapprovedConversationList, listener = this, threadDb)
     }
 
     override fun onCreate(savedInstanceState: Bundle?, ready: Boolean) {
@@ -58,7 +58,7 @@ class MessageRequestsActivity : PassphraseRequiredActionBarActivity(), Conversat
     }
 
     override fun onCreateLoader(id: Int, bundle: Bundle?): Loader<Cursor> {
-        return MessageRequestsLoader(this@MessageRequestsActivity)
+        return MessageRequestsLoader(this@MessageRequestsActivity, threadDb)
     }
 
     override fun onLoadFinished(loader: Loader<Cursor>, cursor: Cursor?) {
@@ -95,7 +95,7 @@ class MessageRequestsActivity : PassphraseRequiredActionBarActivity(), Conversat
             viewModel.deleteMessageRequest(thread)
             LoaderManager.getInstance(this).restartLoader(0, null, this)
             lifecycleScope.launch(Dispatchers.IO) {
-                ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(this@MessageRequestsActivity)
+                ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(this@MessageRequestsActivity, threadDb)
             }
         }
 
@@ -118,7 +118,7 @@ class MessageRequestsActivity : PassphraseRequiredActionBarActivity(), Conversat
             viewModel.clearAllMessageRequests(false)
             LoaderManager.getInstance(this).restartLoader(0, null, this)
             lifecycleScope.launch(Dispatchers.IO) {
-                ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(this@MessageRequestsActivity)
+                ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(this@MessageRequestsActivity, threadDb)
             }
         }
 

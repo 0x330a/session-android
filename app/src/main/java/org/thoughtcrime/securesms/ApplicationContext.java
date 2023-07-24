@@ -66,7 +66,6 @@ import org.thoughtcrime.securesms.groups.OpenGroupManager;
 import org.thoughtcrime.securesms.home.HomeActivity;
 import org.thoughtcrime.securesms.jobmanager.impl.NetworkConstraint;
 import org.thoughtcrime.securesms.logging.AndroidLogger;
-import org.thoughtcrime.securesms.logging.PersistentLogger;
 import org.thoughtcrime.securesms.logging.UncaughtExceptionLogger;
 import org.thoughtcrime.securesms.notifications.BackgroundPollWorker;
 import org.thoughtcrime.securesms.notifications.FcmUtils;
@@ -120,10 +119,7 @@ public class ApplicationContext extends Application implements DefaultLifecycleO
     private Job firebaseInstanceIdJob;
     private HandlerThread conversationListHandlerThread;
     private Handler conversationListHandler;
-    private PersistentLogger persistentLogger;
     public Poller poller = null;
-
-    private volatile boolean isAppVisible;
 
     @Override
     public Object getSystemService(String name) {
@@ -164,10 +160,6 @@ public class ApplicationContext extends Application implements DefaultLifecycleO
         return conversationListHandler;
     }
 
-    public PersistentLogger getPersistentLogger() {
-        return this.persistentLogger;
-    }
-
     @Override
     public void notifyUpdates(@NonNull ConfigBase forConfigObject) {
         // forward to the config factory / storage ig
@@ -204,7 +196,7 @@ public class ApplicationContext extends Application implements DefaultLifecycleO
         initializeBlobProvider();
         resubmitProfilePictureIfNeeded();
         loadEmojiSearchIndexIfNeeded();
-        EmojiSource.refresh();
+        ThreadUtils.queue(()->EmojiSource.refresh(this));
 
         NetworkConstraint networkConstraint = new NetworkConstraint.Factory(this).create();
         HTTP.INSTANCE.setConnectedToNetwork(networkConstraint::isMet);
@@ -212,7 +204,7 @@ public class ApplicationContext extends Application implements DefaultLifecycleO
 
     @Override
     public void onStart(@NonNull LifecycleOwner owner) {
-        isAppVisible = true;
+        getMessageNotifier().setAppVisible(true);
         Log.i(TAG, "App is now visible.");
         KeyCachingService.onAppForegrounded(this);
 
@@ -235,9 +227,9 @@ public class ApplicationContext extends Application implements DefaultLifecycleO
 
     @Override
     public void onStop(@NonNull LifecycleOwner owner) {
-        isAppVisible = false;
+        getMessageNotifier().setAppVisible(false);
         Log.i(TAG, "App is no longer visible.");
-        KeyCachingService.onAppBackgrounded(this);
+        KeyCachingService.onAppBackgrounded(this, getMessageNotifier());
         getMessageNotifier().setVisibleThread(-1);
         if (poller != null) {
             poller.stopIfNeeded();
@@ -280,10 +272,6 @@ public class ApplicationContext extends Application implements DefaultLifecycleO
         return getDatabaseComponent().getProfileManager();
     }
 
-    public boolean isAppVisible() {
-        return isAppVisible;
-    }
-
     // Loki
 
     private void initializeSecurityProvider() {
@@ -311,10 +299,7 @@ public class ApplicationContext extends Application implements DefaultLifecycleO
     }
 
     private void initializeLogging() {
-        if (persistentLogger == null) {
-            persistentLogger = new PersistentLogger(this);
-        }
-        Log.initialize(new AndroidLogger(), persistentLogger);
+        Log.initialize(new AndroidLogger(), getAppComponent().persistentLogger());
     }
 
     private void initializeCrashHandling() {
@@ -391,9 +376,9 @@ public class ApplicationContext extends Application implements DefaultLifecycleO
 
             AsyncTask.THREAD_POOL_EXECUTOR.execute(() -> {
                 if (TextSecurePreferences.isUsingFCM(this)) {
-                    LokiPushNotificationManager.register(token, userPublicKey, this, force);
+                    LokiPushNotificationManager.register(token, userPublicKey, this, force, getDatabaseComponent().lokiAPIDatabase());
                 } else {
-                    LokiPushNotificationManager.unregister(token, this);
+                    LokiPushNotificationManager.unregister(token, this, getDatabaseComponent().lokiAPIDatabase());
                 }
             });
 
@@ -474,7 +459,7 @@ public class ApplicationContext extends Application implements DefaultLifecycleO
     public void clearAllData(boolean isMigratingToV2KeyPair) {
         String token = TextSecurePreferences.getFCMToken(this);
         if (token != null && !token.isEmpty()) {
-            LokiPushNotificationManager.unregister(token, this);
+            LokiPushNotificationManager.unregister(token, this, getDatabaseComponent().lokiAPIDatabase());
         }
         if (firebaseInstanceIdJob != null && firebaseInstanceIdJob.isActive()) {
             firebaseInstanceIdJob.cancel(null);

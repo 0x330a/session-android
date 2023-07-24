@@ -7,6 +7,7 @@ import android.widget.ImageView
 import android.widget.RelativeLayout
 import androidx.annotation.DimenRes
 import com.bumptech.glide.load.engine.DiskCacheStrategy
+import dagger.hilt.android.AndroidEntryPoint
 import network.loki.messenger.R
 import network.loki.messenger.databinding.ViewProfilePictureBinding
 import org.session.libsession.avatars.ContactColors
@@ -17,9 +18,12 @@ import org.session.libsession.messaging.contacts.Contact
 import org.session.libsession.utilities.Address
 import org.session.libsession.utilities.GroupUtil
 import org.session.libsession.utilities.recipients.Recipient
-import org.thoughtcrime.securesms.dependencies.DatabaseComponent
+import org.thoughtcrime.securesms.database.GroupDatabase
+import org.thoughtcrime.securesms.database.SessionContactDatabase
 import org.thoughtcrime.securesms.mms.GlideRequests
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class ProfilePictureView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null
 ) : RelativeLayout(context, attrs) {
@@ -30,6 +34,11 @@ class ProfilePictureView @JvmOverloads constructor(
     var additionalPublicKey: String? = null
     var additionalDisplayName: String? = null
     var isLarge = false
+
+    @Inject
+    lateinit var sessionContactDatabase: SessionContactDatabase
+    @Inject
+    lateinit var groupDatabase: GroupDatabase
 
     private val profilePicturesCache = mutableMapOf<String, String?>()
     private val unknownRecipientDrawable by lazy { ResourceContactPhoto(R.drawable.ic_profile_default)
@@ -42,12 +51,12 @@ class ProfilePictureView @JvmOverloads constructor(
     // region Updating
     fun update(recipient: Recipient) {
         fun getUserDisplayName(publicKey: String): String {
-            val contact = DatabaseComponent.get(context).sessionContactDatabase().getContactWithSessionID(publicKey)
+            val contact = sessionContactDatabase.getContactWithSessionID(publicKey)
             return contact?.displayName(Contact.ContactContext.REGULAR) ?: publicKey
         }
 
         if (recipient.isClosedGroupRecipient) {
-            val members = DatabaseComponent.get(context).groupDatabase()
+            val members = groupDatabase
                     .getGroupMemberAddresses(recipient.address.toGroupString(), true)
                     .sorted()
                     .take(2)

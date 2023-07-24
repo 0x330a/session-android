@@ -9,6 +9,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import org.session.libsession.database.MessageDataProvider
 import org.session.libsession.messaging.MessagingModuleConfiguration
+import org.session.libsession.messaging.sending_receiving.notifications.MessageNotifier
 import org.session.libsession.utilities.TextSecurePreferences
 import org.session.libsession.utilities.WindowDebouncer
 import org.thoughtcrime.securesms.attachments.DatabaseAttachmentProvider
@@ -18,6 +19,7 @@ import org.thoughtcrime.securesms.crypto.DatabaseSecretProvider
 import org.thoughtcrime.securesms.crypto.KeyPairUtilities
 import org.thoughtcrime.securesms.database.*
 import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper
+import org.thoughtcrime.securesms.notifications.MarkReadReceiver
 import org.thoughtcrime.securesms.sskenvironment.ProfileManager
 import org.thoughtcrime.securesms.webrtc.CallMessageProcessor
 import java.util.Timer
@@ -88,8 +90,30 @@ object DatabaseModule {
     fun provideThread(
         @ApplicationContext context: Context,
         openHelper: SQLCipherOpenHelper,
-        debouncer: WindowDebouncer
-    ) = ThreadDatabase(context, openHelper, debouncer)
+        debouncer: WindowDebouncer,
+        messageNotifier: MessageNotifier,
+        smsDb: SmsDatabase,
+        mmsDb: MmsDatabase,
+        mmsSmsDb: MmsSmsDatabase,
+        recipientDb: RecipientDatabase,
+        draftDb: DraftDatabase,
+        lokiMessageDb: LokiMessageDatabase,
+        groupDb: GroupDatabase,
+        markReadReceiver: MarkReadReceiver
+    ) = ThreadDatabase(
+        context,
+        openHelper,
+        debouncer,
+        messageNotifier,
+        smsDb,
+        mmsDb,
+        mmsSmsDb,
+        recipientDb,
+        draftDb,
+        lokiMessageDb,
+        groupDb,
+        markReadReceiver
+    )
 
     @Provides
     @Singleton
@@ -240,8 +264,22 @@ object DatabaseModule {
     fun provideAttachmentProvider(
         @ApplicationContext context: Context,
         openHelper: SQLCipherOpenHelper,
-        debouncer: WindowDebouncer
-    ): MessageDataProvider = DatabaseAttachmentProvider(context, openHelper, debouncer)
+        debouncer: WindowDebouncer,
+        attachmentDatabase: AttachmentDatabase,
+        mmsSmsDatabase: MmsSmsDatabase,
+        mmsDatabase: MmsDatabase,
+        smsDatabase: SmsDatabase,
+        lokiMessageDatabase: LokiMessageDatabase
+    ): MessageDataProvider = DatabaseAttachmentProvider(
+        context,
+        openHelper,
+        debouncer,
+        attachmentDatabase,
+        mmsSmsDatabase,
+        mmsDatabase,
+        smsDatabase,
+        lokiMessageDatabase,
+    )
 
     @Provides
     @Singleton
@@ -253,8 +291,22 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun profileManager(@ApplicationContext context: Context, configFactory: ConfigFactory) =
-        ProfileManager(context, configFactory)
+    fun profileManager(
+        @ApplicationContext context: Context,
+        configFactory: ConfigFactory,
+        sessionContactDatabase: SessionContactDatabase,
+        storage: Storage,
+        recipientDatabase: RecipientDatabase,
+        sessionJobDatabase: SessionJobDatabase
+    ) =
+        ProfileManager(
+            context,
+            configFactory,
+            sessionContactDatabase,
+            storage,
+            recipientDatabase,
+            sessionJobDatabase,
+        )
 
     @Provides
     @Singleton

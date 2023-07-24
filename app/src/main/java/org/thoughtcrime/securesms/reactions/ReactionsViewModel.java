@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.annimon.stream.Stream;
 
+import org.thoughtcrime.securesms.database.ReactionDatabase;
 import org.thoughtcrime.securesms.database.model.MessageId;
 
 import java.util.Comparator;
@@ -20,9 +21,9 @@ public class ReactionsViewModel extends ViewModel {
   private final MessageId           messageId;
   private final ReactionsRepository repository;
 
-  public ReactionsViewModel(@NonNull MessageId messageId) {
+  public ReactionsViewModel(@NonNull MessageId messageId, @NonNull ReactionDatabase reactionDb) {
     this.messageId  = messageId;
-    this.repository = new ReactionsRepository();
+    this.repository = new ReactionsRepository(reactionDb);
   }
 
   public @NonNull
@@ -68,14 +69,16 @@ public class ReactionsViewModel extends ViewModel {
   static final class Factory implements ViewModelProvider.Factory {
 
     private final MessageId messageId;
+    private final ReactionDatabase reactionDb;
 
-    Factory(@NonNull MessageId messageId) {
+    Factory(@NonNull MessageId messageId, @NonNull ReactionDatabase reactionDb) {
       this.messageId = messageId;
+      this.reactionDb = reactionDb;
     }
 
     @Override
     public @NonNull <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
-      return modelClass.cast(new ReactionsViewModel(messageId));
+      return modelClass.cast(new ReactionsViewModel(messageId,reactionDb));
     }
   }
 }

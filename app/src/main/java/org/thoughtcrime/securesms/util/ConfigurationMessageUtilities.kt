@@ -29,7 +29,6 @@ import org.session.libsignal.utilities.IdPrefix
 import org.session.libsignal.utilities.toHexString
 import org.thoughtcrime.securesms.database.GroupDatabase
 import org.thoughtcrime.securesms.database.ThreadDatabase
-import org.thoughtcrime.securesms.dependencies.DatabaseComponent
 import java.util.Timer
 
 object ConfigurationMessageUtilities {
@@ -52,7 +51,7 @@ object ConfigurationMessageUtilities {
     }
 
     @JvmStatic
-    fun syncConfigurationIfNeeded(context: Context) {
+    fun syncConfigurationIfNeeded(context: Context, threadDb: ThreadDatabase) {
         // add if check here to schedule new config job process and return early
         val userPublicKey = TextSecurePreferences.getLocalNumber(context) ?: return
         val forcedConfig = TextSecurePreferences.hasForcedNewConfig(context)
@@ -64,7 +63,7 @@ object ConfigurationMessageUtilities {
         val lastSyncTime = TextSecurePreferences.getLastConfigurationSyncTime(context)
         val now = System.currentTimeMillis()
         if (now - lastSyncTime < 7 * 24 * 60 * 60 * 1000) return
-        val contacts = ContactUtilities.getAllContacts(context).filter { recipient ->
+        val contacts = ContactUtilities.getAllContacts(threadDb).filter { recipient ->
             !recipient.name.isNullOrEmpty() && !recipient.isLocalNumber && recipient.address.serialize().isNotEmpty()
         }.map { recipient ->
             ConfigurationMessage.Contact(
@@ -82,7 +81,7 @@ object ConfigurationMessageUtilities {
         TextSecurePreferences.setLastConfigurationSyncTime(context, now)
     }
 
-    fun forceSyncConfigurationNowIfNeeded(context: Context): Promise<Unit, Exception> {
+    fun forceSyncConfigurationNowIfNeeded(context: Context, threadDb: ThreadDatabase): Promise<Unit, Exception> {
         // add if check here to schedule new config job process and return early
         val userPublicKey = TextSecurePreferences.getLocalNumber(context) ?: return Promise.ofFail(NullPointerException("User Public Key is null"))
         val forcedConfig = TextSecurePreferences.hasForcedNewConfig(context)
@@ -93,7 +92,7 @@ object ConfigurationMessageUtilities {
             scheduleConfigSync(userPublicKey)
             return Promise.ofSuccess(Unit)
         }
-        val contacts = ContactUtilities.getAllContacts(context).filter { recipient ->
+        val contacts = ContactUtilities.getAllContacts(threadDb).filter { recipient ->
             !recipient.isGroupRecipient && !recipient.name.isNullOrEmpty() && !recipient.isLocalNumber && recipient.address.serialize().isNotEmpty()
         }.map { recipient ->
             ConfigurationMessage.Contact(
@@ -182,11 +181,10 @@ object ConfigurationMessageUtilities {
         return dump
     }
 
-    fun generateConversationVolatileDump(context: Context): ByteArray? {
+    fun generateConversationVolatileDump(threadDb: ThreadDatabase): ByteArray? {
         val secretKey = maybeUserSecretKey() ?: return null
         val storage = MessagingModuleConfiguration.shared.storage
         val convoConfig = ConversationVolatileConfig.newInstance(secretKey)
-        val threadDb = DatabaseComponent.get(context).threadDatabase()
         threadDb.approvedConversationList.use { cursor ->
             val reader = threadDb.readerFor(cursor)
             var current = reader.next
@@ -227,7 +225,7 @@ object ConfigurationMessageUtilities {
         return dump
     }
 
-    fun generateUserGroupDump(context: Context): ByteArray? {
+    fun generateUserGroupDump(): ByteArray? {
         val secretKey = maybeUserSecretKey() ?: return null
         val storage = MessagingModuleConfiguration.shared.storage
         val groupConfig = UserGroupsConfig.newInstance(secretKey)

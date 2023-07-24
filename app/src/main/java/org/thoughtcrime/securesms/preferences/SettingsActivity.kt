@@ -30,15 +30,20 @@ import nl.komponents.kovenant.all
 import nl.komponents.kovenant.ui.alwaysUi
 import nl.komponents.kovenant.ui.successUi
 import org.session.libsession.avatars.AvatarHelper
+import org.session.libsession.avatars.ProfileContactPhoto
 import org.session.libsession.messaging.MessagingModuleConfiguration
 import org.session.libsession.snode.SnodeAPI
-import org.session.libsession.avatars.ProfileContactPhoto
-import org.session.libsession.utilities.*
+import org.session.libsession.utilities.Address
+import org.session.libsession.utilities.ProfileKeyUtil
+import org.session.libsession.utilities.ProfilePictureUtilities
 import org.session.libsession.utilities.SSKEnvironment.ProfileManagerProtocol
+import org.session.libsession.utilities.TextSecurePreferences
 import org.session.libsession.utilities.recipients.Recipient
+import org.session.libsession.utilities.truncateIdForDisplay
 import org.thoughtcrime.securesms.PassphraseRequiredActionBarActivity
 import org.thoughtcrime.securesms.avatar.AvatarSelection
 import org.thoughtcrime.securesms.components.ProfilePictureView
+import org.thoughtcrime.securesms.database.ThreadDatabase
 import org.thoughtcrime.securesms.dependencies.ConfigFactory
 import org.thoughtcrime.securesms.home.PathActivity
 import org.thoughtcrime.securesms.messagerequests.MessageRequestsActivity
@@ -63,6 +68,9 @@ class SettingsActivity : PassphraseRequiredActionBarActivity() {
 
     @Inject
     lateinit var configFactory: ConfigFactory
+
+    @Inject
+    lateinit var threadDb: ThreadDatabase
 
     private lateinit var binding: ActivitySettingsBinding
     private var displayNameEditActionMode: ActionMode? = null
@@ -248,7 +256,7 @@ class SettingsActivity : PassphraseRequiredActionBarActivity() {
             if (userConfig != null && userConfig.needsDump()) {
                 configFactory.persist(userConfig, SnodeAPI.nowWithOffset)
             }
-            ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(this@SettingsActivity)
+            ConfigurationMessageUtilities.forceSyncConfigurationNowIfNeeded(this@SettingsActivity, threadDb)
         }
         compoundPromise.alwaysUi {
             if (displayName != null) {

@@ -1,9 +1,8 @@
 package org.thoughtcrime.securesms.emoji
 
+import android.content.Context
 import android.net.Uri
 import androidx.annotation.WorkerThread
-import org.session.libsession.messaging.MessagingModuleConfiguration
-import org.thoughtcrime.securesms.ApplicationContext
 import org.thoughtcrime.securesms.components.emoji.Emoji
 import org.thoughtcrime.securesms.components.emoji.EmojiPageModel
 import org.thoughtcrime.securesms.components.emoji.StaticEmojiPageModel
@@ -93,18 +92,17 @@ class EmojiSource(
 
     @JvmStatic
     @WorkerThread
-    fun refresh() {
-      emojiSource.set(getEmojiSource())
+    fun refresh(context: Context) {
+      emojiSource.set(getEmojiSource(context))
       emojiLatch.countDown()
     }
 
-    private fun getEmojiSource(): EmojiSource {
-      return loadAssetBasedEmojis()
+    private fun getEmojiSource(context: Context): EmojiSource {
+      return loadAssetBasedEmojis(context)
     }
 
-    private fun loadAssetBasedEmojis(): EmojiSource {
-      val context = MessagingModuleConfiguration.shared.context
-      val emojiData: InputStream = ApplicationContext.getInstance(context).assets.open("emoji/emoji_data.json")
+    private fun loadAssetBasedEmojis(context: Context): EmojiSource {
+      val emojiData: InputStream = context.assets.open("emoji/emoji_data.json")
 
       emojiData.use {
         val parsedData: ParsedEmojiData = EmojiJsonParser.parse(it, ::getAssetsUri).getOrThrow()

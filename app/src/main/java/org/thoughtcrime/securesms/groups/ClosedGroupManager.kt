@@ -3,6 +3,7 @@ package org.thoughtcrime.securesms.groups
 import android.content.Context
 import network.loki.messenger.libsession_util.ConfigBase
 import org.session.libsession.messaging.MessagingModuleConfiguration
+import org.session.libsession.messaging.sending_receiving.notifications.MessageNotifier
 import org.session.libsession.messaging.sending_receiving.notifications.PushNotificationAPI
 import org.session.libsession.messaging.sending_receiving.pollers.ClosedGroupPollerV2
 import org.session.libsession.utilities.Address
@@ -10,12 +11,17 @@ import org.session.libsession.utilities.GroupRecord
 import org.session.libsession.utilities.GroupUtil
 import org.session.libsession.utilities.recipients.Recipient
 import org.session.libsignal.crypto.ecc.DjbECPublicKey
-import org.thoughtcrime.securesms.ApplicationContext
 import org.thoughtcrime.securesms.dependencies.ConfigFactory
 
 object ClosedGroupManager {
 
-    fun silentlyRemoveGroup(context: Context, threadId: Long, groupPublicKey: String, groupID: String, userPublicKey: String, delete: Boolean = true) {
+    fun silentlyRemoveGroup(context: Context,
+                            threadId: Long,
+                            groupPublicKey: String,
+                            groupID: String,
+                            userPublicKey: String,
+                            delete: Boolean = true,
+                            messageNotifier: MessageNotifier) {
         val storage = MessagingModuleConfiguration.shared.storage
         // Mark the group as inactive
         storage.setActive(groupID, false)
@@ -28,7 +34,7 @@ object ClosedGroupManager {
         // Stop polling
         ClosedGroupPollerV2.shared.stopPolling(groupPublicKey)
         storage.cancelPendingMessageSendJobs(threadId)
-        ApplicationContext.getInstance(context).messageNotifier.updateNotification(context)
+        messageNotifier.updateNotification(context)
         if (delete) {
             storage.deleteConversation(threadId)
         }

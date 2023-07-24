@@ -28,13 +28,19 @@ import org.thoughtcrime.securesms.components.emoji.EmojiEventListener;
 import org.thoughtcrime.securesms.components.emoji.EmojiPageView;
 import org.thoughtcrime.securesms.components.emoji.EmojiPageViewGridAdapter;
 import org.thoughtcrime.securesms.conversation.v2.ViewUtil;
+import org.thoughtcrime.securesms.database.EmojiSearchDatabase;
 import org.thoughtcrime.securesms.database.model.MessageId;
 import org.thoughtcrime.securesms.database.model.MessageRecord;
 import org.thoughtcrime.securesms.keyboard.emoji.KeyboardPageSearchView;
+import org.thoughtcrime.securesms.keyboard.emoji.search.EmojiSearchRepository;
 import org.thoughtcrime.securesms.util.LifecycleDisposable;
 
+import javax.inject.Inject;
+
+import dagger.hilt.android.AndroidEntryPoint;
 import network.loki.messenger.R;
 
+@AndroidEntryPoint
 public final class ReactWithAnyEmojiDialogFragment extends BottomSheetDialogFragment implements EmojiEventListener,
                                                                                                            EmojiPageViewGridAdapter.VariationSelectorListener
 {
@@ -50,6 +56,8 @@ public final class ReactWithAnyEmojiDialogFragment extends BottomSheetDialogFrag
   private KeyboardPageSearchView search;
 
   private final LifecycleDisposable disposables = new LifecycleDisposable();
+
+  @Inject EmojiSearchDatabase emojiSearchDatabase;
 
   public static DialogFragment createForMessageRecord(@NonNull MessageRecord messageRecord, int startingPage) {
     DialogFragment fragment = new ReactWithAnyEmojiDialogFragment();
@@ -150,7 +158,8 @@ public final class ReactWithAnyEmojiDialogFragment extends BottomSheetDialogFrag
   private void initializeViewModel() {
     Bundle                             args       = requireArguments();
     ReactWithAnyEmojiRepository        repository = new ReactWithAnyEmojiRepository(requireContext());
-    ReactWithAnyEmojiViewModel.Factory factory    = new ReactWithAnyEmojiViewModel.Factory(repository, args.getLong(ARG_MESSAGE_ID), args.getBoolean(ARG_IS_MMS));
+    EmojiSearchRepository              searchRepository = new EmojiSearchRepository(requireContext(), emojiSearchDatabase);
+    ReactWithAnyEmojiViewModel.Factory factory    = new ReactWithAnyEmojiViewModel.Factory(repository, searchRepository, args.getLong(ARG_MESSAGE_ID), args.getBoolean(ARG_IS_MMS));
 
     viewModel = new ViewModelProvider(this, factory).get(ReactWithAnyEmojiViewModel.class);
   }

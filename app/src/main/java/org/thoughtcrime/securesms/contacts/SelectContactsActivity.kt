@@ -9,12 +9,20 @@ import android.view.View
 import androidx.loader.app.LoaderManager
 import androidx.loader.content.Loader
 import androidx.recyclerview.widget.LinearLayoutManager
+import dagger.hilt.android.AndroidEntryPoint
 import network.loki.messenger.R
 import network.loki.messenger.databinding.ActivitySelectContactsBinding
 import org.thoughtcrime.securesms.PassphraseRequiredActionBarActivity
+import org.thoughtcrime.securesms.database.ThreadDatabase
 import org.thoughtcrime.securesms.mms.GlideApp
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class SelectContactsActivity : PassphraseRequiredActionBarActivity(), LoaderManager.LoaderCallbacks<List<String>> {
+
+    @Inject
+    lateinit var threadDb: ThreadDatabase
+
     private lateinit var binding: ActivitySelectContactsBinding
     private var members = listOf<String>()
         set(value) { field = value; selectContactsAdapter.members = value }
@@ -57,7 +65,7 @@ class SelectContactsActivity : PassphraseRequiredActionBarActivity(), LoaderMana
 
     // region Updating
     override fun onCreateLoader(id: Int, bundle: Bundle?): Loader<List<String>> {
-        return SelectContactsLoader(this, usersToExclude)
+        return SelectContactsLoader(this, threadDb, usersToExclude)
     }
 
     override fun onLoadFinished(loader: Loader<List<String>>, members: List<String>) {

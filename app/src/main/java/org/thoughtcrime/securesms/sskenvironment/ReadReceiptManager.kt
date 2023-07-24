@@ -6,9 +6,9 @@ import org.session.libsession.utilities.SSKEnvironment
 import org.session.libsession.utilities.TextSecurePreferences
 import org.session.libsignal.utilities.Log
 import org.thoughtcrime.securesms.database.MessagingDatabase.SyncMessageId
-import org.thoughtcrime.securesms.dependencies.DatabaseComponent
+import org.thoughtcrime.securesms.database.MmsSmsDatabase
 
-class ReadReceiptManager: SSKEnvironment.ReadReceiptManagerProtocol {
+class ReadReceiptManager(private val mmsSmsDatabase: MmsSmsDatabase): SSKEnvironment.ReadReceiptManagerProtocol {
 
     override fun processReadReceipts(context: Context, fromRecipientId: String, sentTimestamps: List<Long>, readTimestamp: Long) {
         if (TextSecurePreferences.isReadReceiptsEnabled(context)) {
@@ -17,7 +17,7 @@ class ReadReceiptManager: SSKEnvironment.ReadReceiptManagerProtocol {
             var address = Address.fromSerialized(fromRecipientId)
             for (timestamp in sentTimestamps) {
                 Log.i("Loki", "Received encrypted read receipt: (XXXXX, $timestamp)")
-                DatabaseComponent.get(context).mmsSmsDatabase().incrementReadReceiptCount(SyncMessageId(address, timestamp), readTimestamp)
+                mmsSmsDatabase.incrementReadReceiptCount(SyncMessageId(address, timestamp), readTimestamp)
             }
         }
     }

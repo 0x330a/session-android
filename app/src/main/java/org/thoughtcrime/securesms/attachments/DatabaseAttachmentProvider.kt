@@ -26,9 +26,12 @@ import org.session.libsignal.utilities.Log
 import org.session.libsignal.utilities.guava.Optional
 import org.thoughtcrime.securesms.database.AttachmentDatabase
 import org.thoughtcrime.securesms.database.Database
+import org.thoughtcrime.securesms.database.LokiMessageDatabase
 import org.thoughtcrime.securesms.database.MessagingDatabase
+import org.thoughtcrime.securesms.database.MmsDatabase
+import org.thoughtcrime.securesms.database.MmsSmsDatabase
+import org.thoughtcrime.securesms.database.SmsDatabase
 import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper
-import org.thoughtcrime.securesms.dependencies.DatabaseComponent
 import org.thoughtcrime.securesms.events.PartProgressEvent
 import org.thoughtcrime.securesms.mms.MediaConstraints
 import org.thoughtcrime.securesms.mms.PartAuthority
@@ -36,32 +39,37 @@ import org.thoughtcrime.securesms.util.MediaUtil
 import java.io.IOException
 import java.io.InputStream
 
-class DatabaseAttachmentProvider(context: Context, helper: SQLCipherOpenHelper, debouncer: WindowDebouncer) : Database(
+class DatabaseAttachmentProvider(context: Context,
+                                 helper: SQLCipherOpenHelper,
+                                 debouncer: WindowDebouncer,
+                                 private val attachmentDatabase: AttachmentDatabase,
+                                 private val mmsSmsDatabase: MmsSmsDatabase,
+                                 private val mmsDatabase: MmsDatabase,
+                                 private val smsDatabase: SmsDatabase,
+                                 private val lokiMessageDatabase: LokiMessageDatabase
+) : Database(
     context,
     helper,
     debouncer,
 ), MessageDataProvider {
 
     override fun getAttachmentStream(attachmentId: Long): SessionServiceAttachmentStream? {
-        val attachmentDatabase = DatabaseComponent.get(context).attachmentDatabase()
         val databaseAttachment = attachmentDatabase.getAttachment(AttachmentId(attachmentId, 0)) ?: return null
         return databaseAttachment.toAttachmentStream(context)
     }
 
     override fun getAttachmentPointer(attachmentId: Long): SessionServiceAttachmentPointer? {
-        val attachmentDatabase = DatabaseComponent.get(context).attachmentDatabase()
         val databaseAttachment = attachmentDatabase.getAttachment(AttachmentId(attachmentId, 0)) ?: return null
         return databaseAttachment.toAttachmentPointer()
     }
 
     override fun getSignalAttachmentStream(attachmentId: Long): SignalServiceAttachmentStream? {
-        val attachmentDatabase = DatabaseComponent.get(context).attachmentDatabase()
         val databaseAttachment = attachmentDatabase.getAttachment(AttachmentId(attachmentId, 0)) ?: return null
         return databaseAttachment.toSignalAttachmentStream(context)
     }
 
     override fun getScaledSignalAttachmentStream(attachmentId: Long): SignalServiceAttachmentStream? {
-        val database = DatabaseComponent.get(context).attachmentDatabase()
+        val database = attachmentDatabase
         val databaseAttachment = database.getAttachment(AttachmentId(attachmentId, 0)) ?: return null
         val mediaConstraints = MediaConstraints.getPushMediaConstraints()
         val scaledAttachment = scaleAndStripExif(database, mediaConstraints, databaseAttachment) ?: return null
@@ -69,34 +77,33 @@ class DatabaseAttachmentProvider(context: Context, helper: SQLCipherOpenHelper, 
     }
 
     override fun getSignalAttachmentPointer(attachmentId: Long): SignalServiceAttachmentPointer? {
-        val attachmentDatabase = DatabaseComponent.get(context).attachmentDatabase()
+        val attachmentDatabase = attachmentDatabase
         val databaseAttachment = attachmentDatabase.getAttachment(AttachmentId(attachmentId, 0)) ?: return null
         return databaseAttachment.toSignalAttachmentPointer()
     }
 
     override fun setAttachmentState(attachmentState: AttachmentState, attachmentId: AttachmentId, messageID: Long) {
-        val attachmentDatabase = DatabaseComponent.get(context).attachmentDatabase()
+        val attachmentDatabase = attachmentDatabase
         attachmentDatabase.setTransferState(messageID, attachmentId, attachmentState.value)
     }
 
     override fun getMessageForQuote(timestamp: Long, author: Address): Triple<Long, Boolean, String>? {
-        val messagingDatabase = DatabaseComponent.get(context).mmsSmsDatabase()
+        val messagingDatabase = mmsSmsDatabase
         val message = messagingDatabase.getMessageFor(timestamp, author)
         return if (message != null) Triple(message.id, message.isMms, message.body) else null
     }
 
     override fun getAttachmentsAndLinkPreviewFor(mmsId: Long): List<Attachment> {
-        return DatabaseComponent.get(context).attachmentDatabase().getAttachmentsForMessage(mmsId)
+        return attachmentDatabase.getAttachmentsForMessage(mmsId)
     }
 
     override fun getMessageBodyFor(timestamp: Long, author: String): String {
-        val messagingDatabase = DatabaseComponent.get(context).mmsSmsDatabase()
+        val messagingDatabase = mmsSmsDatabase
         return messagingDatabase.getMessageFor(timestamp, author)!!.body
     }
 
     override fun getAttachmentIDsFor(messageID: Long): List<Long> {
-        return DatabaseComponent.get(context)
-            .attachmentDatabase()
+        return attachmentDatabase
             .getAttachmentsForMessage(messageID).mapNotNull {
             if (it.isQuote) return@mapNotNull null
             it.attachmentId.rowId
@@ -104,12 +111,12 @@ class DatabaseAttachmentProvider(context: Context, helper: SQLCipherOpenHelper, 
     }
 
     override fun getLinkPreviewAttachmentIDFor(messageID: Long): Long? {
-        val message = DatabaseComponent.get(context).mmsDatabase().getOutgoingMessage(messageID)
+        val message = mmsDatabase.getOutgoingMessage(messageID)
         return message.linkPreviews.firstOrNull()?.attachmentId?.rowId
     }
 
     override fun getIndividualRecipientForMms(mmsId: Long): Recipient? {
-        val mmsDb = DatabaseComponent.get(context).mmsDatabase()
+        val mmsDb = mmsDatabase
         val message = mmsDb.getMessage(mmsId).use {
             mmsDb.readerFor(it).next
         }
@@ -117,7 +124,7 @@ class DatabaseAttachmentProvider(context: Context, helper: SQLCipherOpenHelper, 
     }
 
     override fun insertAttachment(messageId: Long, attachmentId: AttachmentId, stream: InputStream) {
-        val attachmentDatabase = DatabaseComponent.get(context).attachmentDatabase()
+        val attachmentDatabase = attachmentDatabase
         attachmentDatabase.insertAttachmentsForPlaceholder(messageId, attachmentId, stream)
     }
 
@@ -126,7 +133,7 @@ class DatabaseAttachmentProvider(context: Context, helper: SQLCipherOpenHelper, 
         durationMs: Long,
         threadId: Long
     ) {
-        val attachmentDb = DatabaseComponent.get(context).attachmentDatabase()
+        val attachmentDb = attachmentDatabase
         attachmentDb.setAttachmentAudioExtras(DatabaseAttachmentAudioExtras(
             attachmentId = attachmentId,
             visualSamples = byteArrayOf(),
@@ -135,20 +142,20 @@ class DatabaseAttachmentProvider(context: Context, helper: SQLCipherOpenHelper, 
     }
 
     override fun isMmsOutgoing(mmsMessageId: Long): Boolean {
-        val mmsDb = DatabaseComponent.get(context).mmsDatabase()
+        val mmsDb = mmsDatabase
         return mmsDb.getMessage(mmsMessageId).use { cursor ->
             mmsDb.readerFor(cursor).next
         }?.isOutgoing ?: false
     }
 
     override fun isOutgoingMessage(timestamp: Long): Boolean {
-        val smsDatabase = DatabaseComponent.get(context).smsDatabase()
-        val mmsDatabase = DatabaseComponent.get(context).mmsDatabase()
+        val smsDatabase = smsDatabase
+        val mmsDatabase = mmsDatabase
         return smsDatabase.isOutgoingMessage(timestamp) || mmsDatabase.isOutgoingMessage(timestamp)
     }
 
     override fun handleSuccessfulAttachmentUpload(attachmentId: Long, attachmentStream: SignalServiceAttachmentStream, attachmentKey: ByteArray, uploadResult: UploadResult) {
-        val database = DatabaseComponent.get(context).attachmentDatabase()
+        val database = attachmentDatabase
         val databaseAttachment = getDatabaseAttachment(attachmentId) ?: return
         val attachmentPointer = SignalServiceAttachmentPointer(uploadResult.id,
             attachmentStream.contentType,
@@ -166,49 +173,49 @@ class DatabaseAttachmentProvider(context: Context, helper: SQLCipherOpenHelper, 
     }
 
     override fun handleFailedAttachmentUpload(attachmentId: Long) {
-        val database = DatabaseComponent.get(context).attachmentDatabase()
+        val database = attachmentDatabase
         val databaseAttachment = getDatabaseAttachment(attachmentId) ?: return
         database.handleFailedAttachmentUpload(databaseAttachment.attachmentId)
     }
 
     override fun getMessageID(serverID: Long): Long? {
-        val openGroupMessagingDatabase = DatabaseComponent.get(context).lokiMessageDatabase()
+        val openGroupMessagingDatabase = lokiMessageDatabase
         return openGroupMessagingDatabase.getMessageID(serverID)
     }
 
     override fun getMessageID(serverId: Long, threadId: Long): Pair<Long, Boolean>? {
-        val messageDB = DatabaseComponent.get(context).lokiMessageDatabase()
+        val messageDB = lokiMessageDatabase
         return messageDB.getMessageID(serverId, threadId)
     }
 
     override fun getMessageIDs(serverIds: List<Long>, threadId: Long): Pair<List<Long>, List<Long>> {
-        val messageDB = DatabaseComponent.get(context).lokiMessageDatabase()
+        val messageDB = lokiMessageDatabase
         return messageDB.getMessageIDs(serverIds, threadId)
     }
 
     override fun deleteMessage(messageID: Long, isSms: Boolean) {
-        val messagingDatabase: MessagingDatabase = if (isSms)  DatabaseComponent.get(context).smsDatabase()
-                                                   else DatabaseComponent.get(context).mmsDatabase()
+        val messagingDatabase: MessagingDatabase = if (isSms)  smsDatabase
+                                                   else mmsDatabase
         messagingDatabase.deleteMessage(messageID)
-        DatabaseComponent.get(context).lokiMessageDatabase().deleteMessage(messageID, isSms)
-        DatabaseComponent.get(context).lokiMessageDatabase().deleteMessageServerHash(messageID)
+        lokiMessageDatabase.deleteMessage(messageID, isSms)
+        lokiMessageDatabase.deleteMessageServerHash(messageID)
     }
 
     override fun deleteMessages(messageIDs: List<Long>, threadId: Long, isSms: Boolean) {
-        val messagingDatabase: MessagingDatabase = if (isSms)  DatabaseComponent.get(context).smsDatabase()
-                                                   else DatabaseComponent.get(context).mmsDatabase()
+        val messagingDatabase: MessagingDatabase = if (isSms)  smsDatabase
+                                                   else mmsDatabase
 
         messagingDatabase.deleteMessages(messageIDs.toLongArray(), threadId)
-        DatabaseComponent.get(context).lokiMessageDatabase().deleteMessages(messageIDs)
-        DatabaseComponent.get(context).lokiMessageDatabase().deleteMessageServerHashes(messageIDs)
+        lokiMessageDatabase.deleteMessages(messageIDs)
+        lokiMessageDatabase.deleteMessageServerHashes(messageIDs)
     }
 
     override fun updateMessageAsDeleted(timestamp: Long, author: String): Long? {
-        val database = DatabaseComponent.get(context).mmsSmsDatabase()
+        val database = mmsSmsDatabase
         val address = Address.fromSerialized(author)
         val message = database.getMessageFor(timestamp, address) ?: return null
-        val messagingDatabase: MessagingDatabase = if (message.isMms)  DatabaseComponent.get(context).mmsDatabase()
-                                                   else DatabaseComponent.get(context).smsDatabase()
+        val messagingDatabase: MessagingDatabase = if (message.isMms)  mmsDatabase
+                                                   else smsDatabase
         messagingDatabase.markAsDeleted(message.id, message.isRead, message.hasMention)
         if (message.isOutgoing) {
             messagingDatabase.deleteMessage(message.id)
@@ -218,12 +225,12 @@ class DatabaseAttachmentProvider(context: Context, helper: SQLCipherOpenHelper, 
     }
 
     override fun getServerHashForMessage(messageID: Long): String? {
-        val messageDB = DatabaseComponent.get(context).lokiMessageDatabase()
+        val messageDB = lokiMessageDatabase
         return messageDB.getMessageServerHash(messageID)
     }
 
     override fun getDatabaseAttachment(attachmentId: Long): DatabaseAttachment? {
-        val attachmentDatabase = DatabaseComponent.get(context).attachmentDatabase()
+        val attachmentDatabase = attachmentDatabase
         return attachmentDatabase.getAttachment(AttachmentId(attachmentId, 0))
     }
 
