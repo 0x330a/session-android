@@ -5,9 +5,10 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import org.session.libsignal.utilities.Log
 import com.opencsv.CSVReader
 import org.session.libsession.snode.OnionRequestAPI
+import org.session.libsession.utilities.broadcast
+import org.session.libsignal.utilities.Log
 import org.session.libsignal.utilities.ThreadUtils
 import java.io.File
 import java.io.FileOutputStream
@@ -121,7 +122,7 @@ class IP2Country private constructor(private val context: Context) {
                     cacheCountryForIP(snode.ip) // Preload if needed
                 }
             }
-            Broadcaster(context).broadcast("onionRequestPathCountriesLoaded")
+            context.broadcast("onionRequestPathCountriesLoaded")
             Log.d("Loki", "Finished preloading onion request path countries.")
         }
     }

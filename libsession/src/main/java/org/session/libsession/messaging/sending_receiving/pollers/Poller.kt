@@ -15,7 +15,7 @@ import nl.komponents.kovenant.deferred
 import nl.komponents.kovenant.functional.bind
 import nl.komponents.kovenant.resolve
 import nl.komponents.kovenant.task
-import org.session.libsession.messaging.MessagingModuleConfiguration
+import org.session.libsession.database.StorageProtocol
 import org.session.libsession.messaging.jobs.BatchMessageReceiveJob
 import org.session.libsession.messaging.jobs.JobQueue
 import org.session.libsession.messaging.jobs.MessageReceiveParameters
@@ -23,8 +23,8 @@ import org.session.libsession.messaging.messages.control.SharedConfigurationMess
 import org.session.libsession.messaging.sending_receiving.MessageReceiver
 import org.session.libsession.snode.RawResponse
 import org.session.libsession.snode.SnodeAPI
-import org.session.libsession.snode.SnodeModule
 import org.session.libsession.utilities.ConfigFactoryProtocol
+import org.session.libsignal.database.LokiAPIDatabaseProtocol
 import org.session.libsignal.utilities.Log
 import org.session.libsignal.utilities.Namespace
 import org.session.libsignal.utilities.Snode
@@ -35,8 +35,8 @@ import kotlin.time.Duration.Companion.days
 
 private class PromiseCanceledException : Exception("Promise canceled.")
 
-class Poller(private val configFactory: ConfigFactoryProtocol, debounceTimer: Timer) {
-    var userPublicKey = MessagingModuleConfiguration.shared.storage.getUserPublicKey() ?: ""
+class Poller(private val configFactory: ConfigFactoryProtocol, private val storage: StorageProtocol, private val apiDb: LokiAPIDatabaseProtocol) {
+    var userPublicKey = storage.getUserPublicKey() ?: ""
     private var hasStarted: Boolean = false
     private val usedSnodes: MutableSet<Snode> = mutableSetOf()
     var isCaughtUp = false
@@ -90,7 +90,7 @@ class Poller(private val configFactory: ConfigFactoryProtocol, debounceTimer: Ti
     }
 
     private fun pollNextSnode(deferred: Deferred<Unit, Exception>) {
-        val swarm = SnodeModule.shared.storage.getSwarm(userPublicKey) ?: setOf()
+        val swarm = apiDb.getSwarm(userPublicKey) ?: setOf()
         val unusedSnodes = swarm.subtract(usedSnodes)
         if (unusedSnodes.isNotEmpty()) {
             val index = SecureRandom().nextInt(unusedSnodes.size)

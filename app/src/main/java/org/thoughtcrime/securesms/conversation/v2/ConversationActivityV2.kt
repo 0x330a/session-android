@@ -80,6 +80,7 @@ import org.session.libsession.messaging.open_groups.OpenGroupApi.Capability
 import org.session.libsession.messaging.sending_receiving.MessageSender
 import org.session.libsession.messaging.sending_receiving.attachments.Attachment
 import org.session.libsession.messaging.sending_receiving.link_preview.LinkPreview
+import org.session.libsession.messaging.sending_receiving.notifications.MessageNotifier
 import org.session.libsession.messaging.sending_receiving.quotes.QuoteModel
 import org.session.libsession.messaging.utilities.SessionId
 import org.session.libsession.snode.SnodeAPI
@@ -98,10 +99,10 @@ import org.session.libsignal.utilities.ListenableFuture
 import org.session.libsignal.utilities.Log
 import org.session.libsignal.utilities.guava.Optional
 import org.session.libsignal.utilities.hexEncodedPrivateKey
-import org.thoughtcrime.securesms.ApplicationContext
 import org.thoughtcrime.securesms.PassphraseRequiredActionBarActivity
 import org.thoughtcrime.securesms.attachments.ScreenshotObserver
 import org.thoughtcrime.securesms.audio.AudioRecorder
+import org.thoughtcrime.securesms.components.TypingStatusSender
 import org.thoughtcrime.securesms.contacts.SelectContactsActivity.Companion.selectedContactsKey
 import org.thoughtcrime.securesms.contactshare.SimpleTextWatcher
 import org.thoughtcrime.securesms.conversation.v2.ConversationReactionOverlay.OnActionSelectedListener
@@ -161,8 +162,10 @@ import org.thoughtcrime.securesms.mms.VideoSlide
 import org.thoughtcrime.securesms.permissions.Permissions
 import org.thoughtcrime.securesms.reactions.ReactionsDialogFragment
 import org.thoughtcrime.securesms.reactions.any.ReactWithAnyEmojiDialogFragment
+import org.thoughtcrime.securesms.service.ExpiringMessageManager
 import org.thoughtcrime.securesms.showExpirationDialog
 import org.thoughtcrime.securesms.showSessionDialog
+import org.thoughtcrime.securesms.sskenvironment.TypingStatusRepository
 import org.thoughtcrime.securesms.util.ActivityDispatcher
 import org.thoughtcrime.securesms.util.ConfigurationMessageUtilities
 import org.thoughtcrime.securesms.util.DateUtils
@@ -210,6 +213,10 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
     @Inject lateinit var storage: Storage
     @Inject lateinit var reactionDb: ReactionDatabase
     @Inject lateinit var viewModelFactory: ConversationViewModel.AssistedFactory
+    @Inject lateinit var messageNotifier: MessageNotifier
+    @Inject lateinit var typingStatusSender: TypingStatusSender
+    @Inject lateinit var typingStatusRepository: TypingStatusRepository
+    @Inject lateinit var expiringMessageManager: ExpiringMessageManager
 
     private val screenshotObserver by lazy {
         ScreenshotObserver(this, Handler(Looper.getMainLooper())) {
@@ -468,7 +475,7 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
 
     override fun onResume() {
         super.onResume()
-        ApplicationContext.getInstance(this).messageNotifier.setVisibleThread(viewModel.threadId)
+        messageNotifier.setVisibleThread(viewModel.threadId)
 
         contentResolver.registerContentObserver(
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
@@ -479,7 +486,7 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
 
     override fun onPause() {
         super.onPause()
-        ApplicationContext.getInstance(this).messageNotifier.setVisibleThread(-1)
+        messageNotifier.setVisibleThread(-1)
         contentResolver.unregisterContentObserver(screenshotObserver)
     }
 
@@ -650,7 +657,7 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
 
     // called from onCreate
     private fun setUpTypingObserver() {
-        ApplicationContext.getInstance(this).typingStatusRepository.getTypists(viewModel.threadId).observe(this) { state ->
+        typingStatusRepository.getTypists(viewModel.threadId).observe(this) { state ->
             val recipients = if (state != null) state.typists else listOf()
             // FIXME: Also checking isScrolledToBottom is a quick fix for an issue where the
             //        typing indicator overlays the recycler view when scrolled up
@@ -662,7 +669,7 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
             binding!!.inputBar.addTextChangedListener(object : SimpleTextWatcher() {
 
                 override fun onTextChanged(text: String?) {
-                    ApplicationContext.getInstance(this@ConversationActivityV2).typingStatusSender.onTypingStarted(viewModel.threadId)
+                    typingStatusSender.onTypingStarted(viewModel.threadId)
                 }
             })
         }
@@ -1185,7 +1192,7 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
             val message = ExpirationTimerUpdate(expirationTime)
             message.recipient = thread.address.serialize()
             message.sentTimestamp = SnodeAPI.nowWithOffset
-            ApplicationContext.getInstance(this).expiringMessageManager.setExpirationTimer(message)
+            expiringMessageManager.setExpirationTimer(message)
             MessageSender.send(message, thread.address)
             invalidateOptionsMenu()
         }
@@ -1602,7 +1609,7 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
         // Send it
         MessageSender.send(message, recipient.address)
         // Send a typing stopped message
-        ApplicationContext.getInstance(this).typingStatusSender.onTypingStopped(viewModel.threadId)
+        typingStatusSender.onTypingStopped(viewModel.threadId)
         return Pair(recipient.address, sentTimestamp)
     }
 
@@ -1645,7 +1652,7 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
         // Send it
         MessageSender.send(message, recipient.address, attachments, quote, linkPreview)
         // Send a typing stopped message
-        ApplicationContext.getInstance(this).typingStatusSender.onTypingStopped(viewModel.threadId)
+        typingStatusSender.onTypingStopped(viewModel.threadId)
         return Pair(recipient.address, sentTimestamp)
     }
 

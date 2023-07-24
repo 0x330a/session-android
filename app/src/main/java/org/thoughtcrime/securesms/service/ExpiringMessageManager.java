@@ -20,7 +20,6 @@ import org.thoughtcrime.securesms.database.MmsDatabase;
 import org.thoughtcrime.securesms.database.MmsSmsDatabase;
 import org.thoughtcrime.securesms.database.SmsDatabase;
 import org.thoughtcrime.securesms.database.model.MessageRecord;
-import org.thoughtcrime.securesms.dependencies.DatabaseComponent;
 import org.thoughtcrime.securesms.mms.MmsException;
 
 import java.io.IOException;
@@ -41,11 +40,11 @@ public class ExpiringMessageManager implements SSKEnvironment.MessageExpirationM
   private final MmsSmsDatabase mmsSmsDatabase;
   private final Context     context;
 
-  public ExpiringMessageManager(Context context) {
+  public ExpiringMessageManager(Context context, SmsDatabase smsDatabase, MmsDatabase mmsDatabase, MmsSmsDatabase mmsSmsDatabase) {
     this.context     = context.getApplicationContext();
-    this.smsDatabase = DatabaseComponent.get(context).smsDatabase();
-    this.mmsDatabase = DatabaseComponent.get(context).mmsDatabase();
-    this.mmsSmsDatabase = DatabaseComponent.get(context).mmsSmsDatabase();
+    this.smsDatabase = smsDatabase;
+    this.mmsDatabase = mmsDatabase;
+    this.mmsSmsDatabase = mmsSmsDatabase;
 
     executor.execute(new LoadTask());
     executor.execute(new ProcessTask());

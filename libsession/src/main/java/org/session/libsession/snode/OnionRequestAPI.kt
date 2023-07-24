@@ -1,5 +1,6 @@
 package org.session.libsession.snode
 
+import android.content.Context
 import nl.komponents.kovenant.Deferred
 import nl.komponents.kovenant.Promise
 import nl.komponents.kovenant.all
@@ -7,16 +8,17 @@ import nl.komponents.kovenant.deferred
 import nl.komponents.kovenant.functional.bind
 import nl.komponents.kovenant.functional.map
 import okhttp3.Request
+import org.session.libsession.messaging.MessagingModuleConfiguration
 import org.session.libsession.messaging.file_server.FileServerApi
 import org.session.libsession.utilities.AESGCM
 import org.session.libsession.utilities.AESGCM.EncryptionResult
+import org.session.libsession.utilities.broadcast
 import org.session.libsession.utilities.getBodyForOnionRequest
 import org.session.libsession.utilities.getHeadersForOnionRequest
 import org.session.libsignal.crypto.getRandomElement
 import org.session.libsignal.crypto.getRandomElementOrNull
 import org.session.libsignal.database.LokiAPIDatabaseProtocol
 import org.session.libsignal.utilities.Base64
-import org.session.libsignal.utilities.Broadcaster
 import org.session.libsignal.utilities.ForkInfo
 import org.session.libsignal.utilities.HTTP
 import org.session.libsignal.utilities.JsonUtil
@@ -38,8 +40,8 @@ object OnionRequestAPI {
     private var buildPathsPromise: Promise<List<Path>, Exception>? = null
     private val database: LokiAPIDatabaseProtocol
         get() = SnodeModule.shared.storage
-    private val broadcaster: Broadcaster
-        get() = SnodeModule.shared.broadcaster
+    private val context: Context
+        get() = MessagingModuleConfiguration.shared.context // TODO: refactor this in future
     private val pathFailureCount = mutableMapOf<Path, Int>()
     private val snodeFailureCount = mutableMapOf<Snode, Int>()
 
@@ -180,7 +182,7 @@ object OnionRequestAPI {
         val existingBuildPathsPromise = buildPathsPromise
         if (existingBuildPathsPromise != null) { return existingBuildPathsPromise }
         Log.d("Loki", "Building onion request paths.")
-        broadcaster.broadcast("buildingPaths")
+        context.broadcast("buildingPaths")
         val promise = SnodeAPI.getRandomSnode().bind { // Just used to populate the snode pool
             val reusableGuardSnodes = reusablePaths.map { it[0] }
             getGuardSnodes(reusableGuardSnodes).map { guardSnodes ->
@@ -200,7 +202,7 @@ object OnionRequestAPI {
                 }
             }.map { paths ->
                 OnionRequestAPI.paths = paths + reusablePaths
-                broadcaster.broadcast("pathsBuilt")
+                context.broadcast("pathsBuilt")
                 paths
             }
         }

@@ -1,5 +1,6 @@
 package network.loki.messenger
 
+import android.content.Context
 import androidx.core.content.edit
 import androidx.preference.PreferenceManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -10,6 +11,8 @@ import network.loki.messenger.libsession_util.ConfigBase
 import network.loki.messenger.libsession_util.Contacts
 import network.loki.messenger.libsession_util.util.Contact
 import network.loki.messenger.libsession_util.util.ExpiryMode
+import network.loki.messenger.util.TestStorageModule
+import network.loki.messenger.util.TestStorageModule.MESSAGING_MODULE_CONTEXT
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -18,12 +21,15 @@ import org.mockito.kotlin.argThat
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.verify
 import org.session.libsession.messaging.MessagingModuleConfiguration
+import org.session.libsession.snode.SnodeModule
 import org.session.libsession.utilities.TextSecurePreferences
 import org.session.libsignal.utilities.KeyHelper
 import org.session.libsignal.utilities.hexEncodedPublicKey
 import org.thoughtcrime.securesms.crypto.KeyPairUtilities
+import org.thoughtcrime.securesms.database.LokiAPIDatabase
 import org.thoughtcrime.securesms.database.Storage
 import javax.inject.Inject
+import javax.inject.Named
 import kotlin.random.Random
 
 @RunWith(AndroidJUnit4::class)
@@ -35,9 +41,13 @@ class LibSessionTests {
 
     @Inject
     lateinit var prefs: TextSecurePreferences
-
     @Inject
     lateinit var storage: Storage
+    @Inject
+    lateinit var apiDb: LokiAPIDatabase
+    @Inject
+    @Named(MESSAGING_MODULE_CONTEXT)
+    lateinit var messagingModuleContext: Context
 
     private fun randomSeedBytes() = (0 until 16).map { Random.nextInt(UByte.MAX_VALUE.toInt()).toByte() }
     private fun randomKeyPair() = KeyPairUtilities.generate(randomSeedBytes().toByteArray())
@@ -75,6 +85,11 @@ class LibSessionTests {
     @Before
     fun setupUser() {
         hiltRule.inject()
+        // ** Dependency wrangling **
+        TestStorageModule.storage = storage
+        MessagingModuleConfiguration.configure(messagingModuleContext)
+        SnodeModule.configure(apiDb)
+
         PreferenceManager.getDefaultSharedPreferences(InstrumentationRegistry.getInstrumentation().targetContext.applicationContext).edit {
             putBoolean(TextSecurePreferences.HAS_FORCED_NEW_CONFIG, true).apply()
         }

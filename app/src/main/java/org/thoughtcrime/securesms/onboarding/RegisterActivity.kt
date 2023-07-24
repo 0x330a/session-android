@@ -19,7 +19,6 @@ import com.goterl.lazysodium.utils.KeyPair
 import dagger.hilt.android.AndroidEntryPoint
 import network.loki.messenger.R
 import network.loki.messenger.databinding.ActivityRegisterBinding
-import org.session.libsession.snode.SnodeModule
 import org.session.libsession.utilities.TextSecurePreferences
 import org.session.libsignal.crypto.ecc.ECKeyPair
 import org.session.libsignal.database.LokiAPIDatabaseProtocol
@@ -38,9 +37,10 @@ class RegisterActivity : BaseActionBarActivity() {
     @Inject
     lateinit var configFactory: ConfigFactory
 
+    @Inject
+    lateinit var database: LokiAPIDatabaseProtocol
+
     private lateinit var binding: ActivityRegisterBinding
-    internal val database: LokiAPIDatabaseProtocol
-        get() = SnodeModule.shared.storage
     private var seed: ByteArray? = null
     private var ed25519KeyPair: KeyPair? = null
     private var x25519KeyPair: ECKeyPair? = null

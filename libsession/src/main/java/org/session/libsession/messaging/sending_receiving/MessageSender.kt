@@ -27,7 +27,6 @@ import org.session.libsession.messaging.utilities.SodiumUtilities
 import org.session.libsession.snode.RawResponsePromise
 import org.session.libsession.snode.SnodeAPI
 import org.session.libsession.snode.SnodeMessage
-import org.session.libsession.snode.SnodeModule
 import org.session.libsession.utilities.Address
 import org.session.libsession.utilities.GroupUtil
 import org.session.libsession.utilities.SSKEnvironment
@@ -173,7 +172,7 @@ object MessageSender {
         fun handleFailure(error: Exception) {
             handleFailedMessageSend(message, error, isSyncMessage)
             if (destination is Destination.Contact && message is VisibleMessage && !isSelfSend()) {
-                SnodeModule.shared.broadcaster.broadcast("messageFailed", message.sentTimestamp!!)
+                Log.e("Loki", "Message send failed, sending to contact of visible message type (not to self)")
             }
             deferred.reject(error)
         }

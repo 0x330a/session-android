@@ -44,7 +44,6 @@ import org.session.libsession.utilities.ProfilePictureUtilities;
 import org.session.libsession.utilities.SSKEnvironment;
 import org.session.libsession.utilities.TextSecurePreferences;
 import org.session.libsession.utilities.Util;
-import org.session.libsession.utilities.WindowDebouncer;
 import org.session.libsession.utilities.dynamiclanguage.DynamicLanguageContextWrapper;
 import org.session.libsession.utilities.dynamiclanguage.LocaleParser;
 import org.session.libsignal.utilities.HTTP;
@@ -70,18 +69,15 @@ import org.thoughtcrime.securesms.logging.AndroidLogger;
 import org.thoughtcrime.securesms.logging.PersistentLogger;
 import org.thoughtcrime.securesms.logging.UncaughtExceptionLogger;
 import org.thoughtcrime.securesms.notifications.BackgroundPollWorker;
-import org.thoughtcrime.securesms.notifications.DefaultMessageNotifier;
 import org.thoughtcrime.securesms.notifications.FcmUtils;
 import org.thoughtcrime.securesms.notifications.LokiPushNotificationManager;
 import org.thoughtcrime.securesms.notifications.NotificationChannels;
-import org.thoughtcrime.securesms.notifications.OptimizedMessageNotifier;
 import org.thoughtcrime.securesms.providers.BlobProvider;
 import org.thoughtcrime.securesms.service.ExpiringMessageManager;
 import org.thoughtcrime.securesms.service.KeyCachingService;
 import org.thoughtcrime.securesms.sskenvironment.ProfileManager;
 import org.thoughtcrime.securesms.sskenvironment.ReadReceiptManager;
 import org.thoughtcrime.securesms.sskenvironment.TypingStatusRepository;
-import org.thoughtcrime.securesms.util.Broadcaster;
 import org.thoughtcrime.securesms.util.dynamiclanguage.LocaleParseHelper;
 import org.webrtc.PeerConnectionFactory;
 import org.webrtc.PeerConnectionFactory.InitializationOptions;
@@ -97,7 +93,6 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.Timer;
 import java.util.concurrent.Executors;
 
 import dagger.hilt.EntryPoints;
@@ -122,18 +117,11 @@ public class ApplicationContext extends Application implements DefaultLifecycleO
 
     private static final String TAG = ApplicationContext.class.getSimpleName();
 
-    private ExpiringMessageManager expiringMessageManager;
-    private TypingStatusRepository typingStatusRepository;
-    private TypingStatusSender typingStatusSender;
-    private ReadReceiptManager readReceiptManager;
-    public MessageNotifier messageNotifier = null;
-    public Poller poller = null;
-    public Broadcaster broadcaster = null;
     private Job firebaseInstanceIdJob;
-    private WindowDebouncer conversationListDebouncer;
     private HandlerThread conversationListHandlerThread;
     private Handler conversationListHandler;
     private PersistentLogger persistentLogger;
+    public Poller poller = null;
 
     private volatile boolean isAppVisible;
 
@@ -143,10 +131,6 @@ public class ApplicationContext extends Application implements DefaultLifecycleO
             return getDatabaseComponent().messagingModuleConfiguration();
         }
         return super.getSystemService(name);
-    }
-
-    public static ApplicationContext getInstance(Context context) {
-        return (ApplicationContext) context.getApplicationContext();
     }
 
     public AppComponent getAppComponent() {
@@ -208,20 +192,14 @@ public class ApplicationContext extends Application implements DefaultLifecycleO
         NotificationChannels.create(this);
         ProcessLifecycleOwner.get().getLifecycle().addObserver(this);
         AppContext.INSTANCE.configureKovenant();
-        messageNotifier = new OptimizedMessageNotifier(new DefaultMessageNotifier());
-        broadcaster = new Broadcaster(this);
         LokiAPIDatabase apiDB = getDatabaseComponent().lokiAPIDatabase();
-        SnodeModule.Companion.configure(apiDB, broadcaster);
+        SnodeModule.Companion.configure(apiDB);
         String userPublicKey = TextSecurePreferences.getLocalNumber(this);
         if (userPublicKey != null) {
             registerForFCMIfNeeded(false);
         }
-        initializeExpiringMessageManager();
-        initializeTypingStatusRepository();
-        initializeTypingStatusSender();
-        initializeReadReceiptManager();
         initializePeriodicTasks();
-        SSKEnvironment.Companion.configure(getTypingStatusRepository(), getReadReceiptManager(), getProfileManager(), messageNotifier, getExpiringMessageManager());
+        SSKEnvironment.Companion.configure(getTypingStatusRepository(), getReadReceiptManager(), getProfileManager(), getMessageNotifier(), getExpiringMessageManager());
         initializeWebRtc();
         initializeBlobProvider();
         resubmitProfilePictureIfNeeded();
@@ -260,7 +238,7 @@ public class ApplicationContext extends Application implements DefaultLifecycleO
         isAppVisible = false;
         Log.i(TAG, "App is no longer visible.");
         KeyCachingService.onAppBackgrounded(this);
-        messageNotifier.setVisibleThread(-1);
+        getMessageNotifier().setVisibleThread(-1);
         if (poller != null) {
             poller.stopIfNeeded();
         }
@@ -279,19 +257,23 @@ public class ApplicationContext extends Application implements DefaultLifecycleO
     }
 
     public ExpiringMessageManager getExpiringMessageManager() {
-        return expiringMessageManager;
+        return getAppComponent().expiringMessageManager();
     }
 
     public TypingStatusRepository getTypingStatusRepository() {
-        return typingStatusRepository;
+        return getAppComponent().typingStatusRepository();
     }
 
     public TypingStatusSender getTypingStatusSender() {
-        return typingStatusSender;
+        return getAppComponent().typingStatusSender();
+    }
+
+    public MessageNotifier getMessageNotifier() {
+        return getAppComponent().messageNotifier();
     }
 
     public ReadReceiptManager getReadReceiptManager() {
-        return readReceiptManager;
+        return getAppComponent().readReceiptManager();
     }
 
     public ProfileManager getProfileManager() {
@@ -338,22 +320,6 @@ public class ApplicationContext extends Application implements DefaultLifecycleO
     private void initializeCrashHandling() {
         final Thread.UncaughtExceptionHandler originalHandler = Thread.getDefaultUncaughtExceptionHandler();
         Thread.setDefaultUncaughtExceptionHandler(new UncaughtExceptionLogger(originalHandler));
-    }
-
-    private void initializeExpiringMessageManager() {
-        this.expiringMessageManager = new ExpiringMessageManager(this);
-    }
-
-    private void initializeTypingStatusRepository() {
-        this.typingStatusRepository = new TypingStatusRepository();
-    }
-
-    private void initializeReadReceiptManager() {
-        this.readReceiptManager = new ReadReceiptManager();
-    }
-
-    private void initializeTypingStatusSender() {
-        this.typingStatusSender = new TypingStatusSender(this);
     }
 
     private void initializePeriodicTasks() {
@@ -442,7 +408,7 @@ public class ApplicationContext extends Application implements DefaultLifecycleO
             poller.setUserPublicKey(userPublicKey);
             return;
         }
-        poller = new Poller(getConfigFactory(), new Timer());
+        poller = getAppComponent().userPoller();
         getDatabaseComponent().getCallMessageProcessor().init();
     }
 

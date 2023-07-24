@@ -2,6 +2,7 @@
 
 package org.session.libsession.snode
 
+import android.content.Context
 import android.os.Build
 import com.goterl.lazysodium.LazySodiumAndroid
 import com.goterl.lazysodium.SodiumAndroid
@@ -19,11 +20,11 @@ import nl.komponents.kovenant.functional.map
 import nl.komponents.kovenant.task
 import org.session.libsession.messaging.MessagingModuleConfiguration
 import org.session.libsession.messaging.utilities.MessageWrapper
+import org.session.libsession.utilities.broadcast
 import org.session.libsignal.crypto.getRandomElement
 import org.session.libsignal.database.LokiAPIDatabaseProtocol
 import org.session.libsignal.protos.SignalServiceProtos
 import org.session.libsignal.utilities.Base64
-import org.session.libsignal.utilities.Broadcaster
 import org.session.libsignal.utilities.HTTP
 import org.session.libsignal.utilities.Hex
 import org.session.libsignal.utilities.JsonUtil
@@ -44,8 +45,8 @@ object SnodeAPI {
     private val sodium by lazy { LazySodiumAndroid(SodiumAndroid()) }
     internal val database: LokiAPIDatabaseProtocol
         get() = SnodeModule.shared.storage
-    private val broadcaster: Broadcaster
-        get() = SnodeModule.shared.broadcaster
+    private val context: Context
+        get() = MessagingModuleConfiguration.shared.context
 
     internal var snodeFailureCount: MutableMap<Snode, Int> = mutableMapOf()
     internal var snodePool: Set<Snode>
@@ -872,7 +873,7 @@ object SnodeAPI {
             }
             406 -> {
                 Log.d("Loki", "The user's clock is out of sync with the service node network.")
-                broadcaster.broadcast("clockOutOfSync")
+                context.broadcast("clockOutOfSync")
                 return Error.ClockOutOfSync
             }
             421 -> {

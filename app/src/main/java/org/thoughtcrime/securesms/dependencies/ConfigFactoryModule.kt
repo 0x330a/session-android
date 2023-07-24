@@ -14,7 +14,7 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object SessionUtilModule {
+object ConfigFactoryModule {
 
     private fun maybeUserEdSecretKey(context: Context): ByteArray? {
         val edKey = KeyPairUtilities.getUserED25519KeyPair(context) ?: return null

@@ -23,7 +23,6 @@ import kotlinx.coroutines.launch
 import network.loki.messenger.R
 import network.loki.messenger.databinding.ActivityLinkDeviceBinding
 import network.loki.messenger.databinding.FragmentRecoveryPhraseBinding
-import org.session.libsession.snode.SnodeModule
 import org.session.libsession.utilities.TextSecurePreferences
 import org.session.libsignal.crypto.MnemonicCodec
 import org.session.libsignal.database.LokiAPIDatabaseProtocol
@@ -47,10 +46,10 @@ class LinkDeviceActivity : BaseActionBarActivity(), ScanQRCodeWrapperFragmentDel
 
     @Inject
     lateinit var configFactory: ConfigFactory
+    @Inject
+    lateinit var database: LokiAPIDatabaseProtocol
 
     private lateinit var binding: ActivityLinkDeviceBinding
-    internal val database: LokiAPIDatabaseProtocol
-        get() = SnodeModule.shared.storage
     private val adapter = LinkDeviceActivityAdapter(this)
     private var restoreJob: Job? = null
 
