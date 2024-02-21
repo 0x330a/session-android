@@ -1,7 +1,7 @@
 package org.session.libsignal.utilities
 
 fun String.removingIdPrefixIfNeeded(): String {
-  return if (length == 66 && IdPrefix.fromValue(this) != null) removeRange(0..1) else this
+  return if (length > 64 && IdPrefix.fromValue(this) != null) removeRange(0..1) else this
 }
 
 fun ByteArray.removingIdPrefixIfNeeded(): ByteArray {

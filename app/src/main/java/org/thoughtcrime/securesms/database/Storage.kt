@@ -80,6 +80,7 @@ import org.session.libsignal.utilities.IdPrefix
 import org.session.libsignal.utilities.KeyHelper
 import org.session.libsignal.utilities.Log
 import org.session.libsignal.utilities.guava.Optional
+import org.session.libsignal.utilities.removingIdPrefixIfNeeded
 import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper
 import org.thoughtcrime.securesms.database.model.MessageId
 import org.thoughtcrime.securesms.database.model.ReactionRecord
@@ -113,7 +114,15 @@ open class Storage(
                 val sessionId = GroupUtil.doubleDecodeGroupId(address.serialize())
                 val closedGroup = getGroup(address.toGroupString())
                 if (closedGroup != null && closedGroup.isActive) {
-                    val legacyGroup = groups.getOrConstructLegacyGroupInfo(sessionId)
+                    val keyPair = getLatestClosedGroupEncryptionKeyPair(sessionId)
+                    val legacyGroup = groups.getOrConstructLegacyGroupInfo(sessionId).let {
+                        if (keyPair != null && keyPair.publicKey.serialize().isNotEmpty() && keyPair.privateKey.serialize().isNotEmpty()) {
+                            it.copy(
+                                encPubKey = (keyPair.publicKey as DjbECPublicKey).publicKey,  // 'serialize()' inserts an extra byte
+                                encSecKey = keyPair.privateKey.serialize()
+                            )
+                        } else it
+                    }
                     groups.set(legacyGroup)
                     val newVolatileParams = volatile.getOrConstructLegacyGroup(sessionId).copy(
                         lastRead = SnodeAPI.nowWithOffset,
@@ -886,7 +895,7 @@ open class Storage(
             name = name,
             members = members,
             priority = ConfigBase.PRIORITY_VISIBLE,
-            encPubKey = (encryptionKeyPair.publicKey as DjbECPublicKey).publicKey,  // 'serialize()' inserts an extra byte
+            encPubKey = (encryptionKeyPair.publicKey as DjbECPublicKey).publicKey.removingIdPrefixIfNeeded(),  // 'serialize()' inserts an extra byte
             encSecKey = encryptionKeyPair.privateKey.serialize(),
             disappearingTimer = 0L,
             joinedAt = (formationTimestamp / 1000L)

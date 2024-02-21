@@ -49,6 +49,8 @@ fun MessageSender.create(
         val groupPublicKey = Curve.generateKeyPair().hexEncodedPublicKey // Includes the "05" prefix
         // Generate the key pair that'll be used for encryption and decryption
         val encryptionKeyPair = Curve.generateKeyPair()
+        val sentTime = SnodeAPI.nowWithOffset
+        storage.addClosedGroupEncryptionKeyPair(encryptionKeyPair, groupPublicKey, sentTime)
         // Create the group
         val groupID = GroupUtil.doubleEncodeGroupID(groupPublicKey)
         val admins = setOf( userPublicKey )
@@ -59,16 +61,11 @@ fun MessageSender.create(
 
         // Send a closed group update message to all members individually
         val closedGroupUpdateKind = ClosedGroupControlMessage.Kind.New(ByteString.copyFrom(Hex.fromStringCondensed(groupPublicKey)), name, encryptionKeyPair, membersAsData, adminsAsData, 0)
-        val sentTime = SnodeAPI.nowWithOffset
 
         // Add the group to the user's set of public keys to poll for
         storage.addClosedGroupPublicKey(groupPublicKey)
         // Store the encryption key pair
-        storage.addClosedGroupEncryptionKeyPair(encryptionKeyPair, groupPublicKey, sentTime)
-        // Create the thread
-        storage.getOrCreateThreadIdFor(Address.fromSerialized(groupID))
-
-        // Notify the user
+        // Create the thread and notify the user
         val threadID = storage.getOrCreateThreadIdFor(Address.fromSerialized(groupID))
         storage.insertOutgoingInfoMessage(context, groupID, SignalServiceGroup.Type.CREATION, name, members, admins, threadID, sentTime)
 
